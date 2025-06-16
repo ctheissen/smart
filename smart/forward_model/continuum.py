@@ -35,7 +35,7 @@ def continuum(data, mdl, deg=10, prop=False, tell=False):
     #print('model wave:', type(mdl.wave), mdl.wave[-1])
     #print(data.wave)
     #print(mdl.wave)
-    if data.instrument in ['nirspec', 'hires', 'igrins', 'kpic']:
+    if data.instrument.lower() in ['nirspec', 'hires', 'igrins', 'kpic', 'fire', 'nires']:
         mdl_range      = np.where((mdl.wave >= data.wave[0]) & (mdl.wave <= data.wave[-1]))
         mdl_wave       = mdl.wave[mdl_range]
         mdl_flux       = mdl.flux[mdl_range]
@@ -44,13 +44,13 @@ def continuum(data, mdl, deg=10, prop=False, tell=False):
     #    mdl_range      = np.where( ((mdl.wave >= data.wave[0]) & (mdl.wave <= data.wave[1350])) | (mdl.wave >= data.wave[1650]) & (mdl.wave <= data.wave[-1])  )
     #    mdl_wave       = mdl.wave[mdl_range]
     #    mdl_flux       = mdl.flux[mdl_range]
-    elif data.instrument in ['apogee']:
+    elif data.instrument.lower() in ['apogee']:
         ## the index for apogee is reversed
         #mdl_range      = np.where((mdl.wave >= data.wave[-1]) & (mdl.wave <= data.wave[0]))
         mdl_wave       = mdl.wave
         mdl_flux       = mdl.flux
 
-    if data.instrument == 'igrins':
+    if data.instrument.lower() in ['igrins']:
         # avoid the telluric CH4 region for order 6
         wave = np.concatenate((data.wave[70: 1350], data.wave[1650: -10]), axis=None)
         flux = np.concatenate((data.flux[70: 1350], data.flux[1650: -10]), axis=None)
@@ -63,20 +63,38 @@ def continuum(data, mdl, deg=10, prop=False, tell=False):
         mdldiv          = data.flux/mdl_int
 
     ## find mean and stdev of mdldiv
-    mean_mdldiv     = np.mean(mdldiv)
-    std_mdldiv      = np.std(mdldiv)
+    mean_mdldiv     = np.nanmean(mdldiv)
+    std_mdldiv      = np.nanstd(mdldiv)
     
     ## replace outliers with average value for nirspec
-    if data.instrument in ['nirspec', 'hires', 'kpic']:
+    if data.instrument.lower() in ['nirspec', 'hires', 'kpic', 'fire', 'nires']:
         mdldiv[mdldiv  <= mean_mdldiv - 2 * std_mdldiv] = mean_mdldiv
         mdldiv[mdldiv  >= mean_mdldiv + 2 * std_mdldiv] = mean_mdldiv
+
+        #plt.figure(1)
+        #print(np.__version__)
+        #print(np.where(np.isnan(mdldiv)==True))
+        #print(np.where(np.isinf(mdldiv)==True))
+        #print(np.where(np.isnan(data.noise)==True))
+        #print(np.where(np.isinf(data.noise)==True))
+        #print(np.where(data.noise==0))
+        #print(data.wave.shape)
+        #print(data.noise.shape)
+        #print(mdldiv.shape)
+        #plt.plot(data.wave, mdldiv)
+        #plt.show()
+
+        # need to deal with nans and infs
+        mdldiv[np.where(np.isnan(mdldiv)==True)] = 0
+        mdldiv[np.where(np.isinf(mdldiv)==True)] = 0
+
         try:
-            pcont           = np.polyfit(data.wave, mdldiv, deg, w=1/data.noise**2)
+            pcont           = np.polyfit(data.wave, mdldiv, deg, w=1. / data.noise ** 2)
         except:
             ## if the length of the data flux and noise are not the same
             pcont           = np.polyfit(data.wave, mdldiv, deg)
     
-    if data.instrument == 'igrins':
+    if data.instrument.lower() in ['igrins']:
         #mdldiv[mdldiv  <= mean_mdldiv - 2 * std_mdldiv] = mean_mdldiv
         #mdldiv[mdldiv  >= mean_mdldiv + 2 * std_mdldiv] = mean_mdldiv
         #try:
@@ -86,7 +104,7 @@ def continuum(data, mdl, deg=10, prop=False, tell=False):
         pcont           = np.polyfit(wave, mdldiv, deg)
 
     ## outlier rejection for apogee
-    elif data.instrument == 'apogee':
+    elif data.instrument.lower() in ['apogee']:
         select_poly_fit = np.where(np.absolute(mdldiv - mean_mdldiv) <= 2 * std_mdldiv)
         mdldiv          = mdldiv[select_poly_fit]
         data_wave_fit   = data.wave[select_poly_fit]
@@ -94,14 +112,14 @@ def continuum(data, mdl, deg=10, prop=False, tell=False):
     
     mdl.flux       *= np.polyval(pcont, mdl.wave)
 
-    if data.instrument == 'apogee':
-        constA    = (np.std(data.flux[select_poly_fit])/np.std(mdl.flux[select_poly_fit]))
+    if data.instrument.lower() == 'apogee':
+        constA    = (np.nanstd(data.flux[select_poly_fit])/np.nanstd(mdl.flux[select_poly_fit]))
         mdl.flux *= constA
-        constB    = np.median(mdl.flux[select_poly_fit]) - np.median(data.flux[select_poly_fit])
+        constB    = np.nanmedian(mdl.flux[select_poly_fit]) - np.nanmedian(data.flux[select_poly_fit])
         mdl.flux -= constB
 
     if prop:
-        if data.instrument == 'apogee':
+        if data.instrument.lower() == 'apogee':
             return mdl, np.polyval(pcont, mdl.wave), constA, constB
         else:
             return mdl, np.polyval(pcont, mdl.wave)

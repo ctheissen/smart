@@ -86,7 +86,8 @@ class Spectrum():
 			self.oriFlux  = hdulist[1].data
 			self.oriNoise = hdulist[2].data
 
-		elif self.instrument == 'apogee':
+		elif self.instrument.lower() == 'apogee':
+			
 			self.name      = kwargs.get('name')
 			self.path      = kwargs.get('path')
 			self.datatype  = kwargs.get('datatype','aspcap')
@@ -249,7 +250,8 @@ class Spectrum():
 				## APOGEE APVISIT has corrected the telluric absorption; the forward-modeling routine needs to put it back
 				#self.flux     *= self.tell
 
-			elif self.datatype == 'apstar':
+			elif self.datatype.lower() == 'apstar':
+
 				# see the description of the data model: 
 				# https://data.sdss.org/datamodel/files/APOGEE_REDUX/APRED_VERS/APSTAR_VERS-DR14/TELESCOPE/LOCATION_ID/apStar.html
 				crval1         = hdulist[0].header['CRVAL1']
@@ -307,7 +309,7 @@ class Spectrum():
 			self.model    = np.array(hdulist[3].data)
 			self.mask     = []
 
-		elif self.instrument == 'igrins':
+		elif self.instrument.lower() == 'igrins':
 			"""
 			Follow the IGRINS PIP data product convention; default is to read the flattened spectra
 			
@@ -362,6 +364,7 @@ class Spectrum():
 					fullpath_wave = fullpath_flux
 				fullpath_var  = fullpath_flux
 			else:
+
 				fullpath_flux = self.path + '/' + self.name + '.spec.fits'
 				fullpath_wave = self.path + '/' + self.name + '.spec_flattened.fits'
 				fullpath_var  = self.path + '/' + self.name + '.variance.fits'
@@ -376,30 +379,46 @@ class Spectrum():
 
 			#The indices 0 to 3 correspond to wavelength, flux, noise, and sky - NOT TRUE ANYMORE
 			if self.flat_tell:
+
 				if '_calibrated' in self.name2:
+					
 					self.header = wave[1].header
+
 				else:
+					
 					self.header = hdulist[0].header
 			else:
+
 				self.header = hdulist[0].header
 
 			# if the calibrated wavelength, read the data different from the raw data
 			if '_calibrated' in self.name2 and self.name.rstrip('_calibrated') == self.name2.rstrip('_calibrated'):
+
 				self.wave   = wave[1].data#[igrins_order_dict[str(self.order)]]
+
 				if self.scale: 
+
 					self.flux   = hdulist[6].data#[igrins_order_dict[str(self.order)]]
 					self.noise  = np.sqrt(var[8].data)#[igrins_order_dict[str(self.order)]])
+
 				elif self.flat_tell:
+
 					self.flux   = hdulist[0].data[igrins_order_dict[str(self.order)]]
 					self.noise  = np.sqrt(var[7].data)#[igrins_order_dict[str(self.order)]])
+
 				else: 
+
 					self.flux   = hdulist[0].data[igrins_order_dict[str(self.order)]]
 					self.noise  = np.sqrt(var[0].data[igrins_order_dict[str(self.order)]])
+
 			elif self.flat_tell:
+
 				self.wave   = wave[1].data[igrins_order_dict[str(self.order)]] * 1e4 # convert from micron to Angstrom
 				self.flux   = hdulist[0].data[igrins_order_dict[str(self.order)]]
 				self.noise  = np.sqrt(var[0].data[igrins_order_dict[str(self.order)]])
+
 			else:
+
 				if '_calibrated' in self.name2: 
 					self.wave   = wave[1].data#[igrins_order_dict[str(self.order)]] * 1e4 # convert from micron to Angstrom
 				else:
@@ -417,7 +436,9 @@ class Spectrum():
 			self.oriNoise = self.noise
 
 			self.mask = []
+
 			if self.applymask:
+
 				# masking out any NaNs in noise, wave, flux
 				mask_locs = np.any([np.isnan(self.noise).tolist(), np.isnan(self.wave).tolist(), np.isnan(self.flux).tolist()], axis=0)
 	
@@ -430,6 +451,7 @@ class Spectrum():
 			self.bestshift = []
 
 		elif self.instrument == 'hires':
+
 			self.name      = kwargs.get('name')
 			self.order     = kwargs.get('order')
 			self.path      = kwargs.get('path')
@@ -457,7 +479,26 @@ class Spectrum():
 			self.oriNoise = hdulist[2].data
 			self.mask     = []
 
+
+		else: 
+			try: 
+				self.name      = kwargs.get('name')
+				self.order     = kwargs.get('order')
+				self.path      = kwargs.get('path')
+				self.apply_sigma_mask = kwargs.get('apply_sigma_mask', False)
+				#self.manaulmask = kwargs('manaulmask', False)
+
+				# The indices 0 to 3 correspond to wavelength, flux, noise
+				self.wave     = kwargs.get('wave')
+				self.flux     = kwargs.get('flux')
+				self.noise    = kwargs.get('noise')
+				self.mask     = []
+			except:
+				raise Exception('Instrument not implemented in SMART yet. Contact devs.')
+
+
 		if self.apply_sigma_mask:
+
 			# set up masking criteria
 			self.avgFlux = np.mean(self.flux)
 			self.stdFlux = np.std(self.flux)

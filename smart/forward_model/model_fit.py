@@ -39,15 +39,22 @@ def makeModel(teff, logg=5, metal=0, vsini=1, rv=0, tell_alpha=1.0, airmass=1.0,
 	instrument   = kwargs.get('instrument', 'nirspec')
 	veiling      = kwargs.get('veiling', 0)    # flux veiling parameter
 	lsf          = kwargs.get('lsf', 4.5)   # instrumental LSF
+	flux_mult    = kwargs.get('flux_mult', 0)   # flux multiplier
+	smooth       = kwargs.get('smooth', False)   # smooth the spectrum
 	include_fringe_model = kwargs.get('include_fringe_model', False)
 	fringe_mcmc  =  kwargs.get('fringe_mcmc', False)
 	piece_wise_fringe_model_list = kwargs.get('piece_wise_fringe_model_list', [0, 700, -800, -1])
 	slow_rotation_broaden = kwargs.get('slow_rotation_broaden', False)
 
-	if instrument == 'kpic':
-		instrument = 'nirspec' # dirty fix
+	#print(instrument, order)
 
-	if instrument == 'apogee':
+	if instrument.lower() == 'kpic': 
+
+		instrument = 'nirspec' # same instrument
+
+
+	if instrument.lower() == 'apogee':
+
 		try:
 			import apogee_tools as ap
 		except ImportError:
@@ -94,7 +101,8 @@ def makeModel(teff, logg=5, metal=0, vsini=1, rv=0, tell_alpha=1.0, airmass=1.0,
 
 	output_stellar_model = kwargs.get('output_stellar_model', False)
 	
-	if data is not None and instrument in ['nirspec', 'hires', 'igrins']:
+	if data is not None and instrument.lower() in ['nirspec', 'hires', 'igrins']:
+		
 		order = data.order
 		# read in a model
 		#print('teff ',teff,'logg ',logg, 'z', z, 'order', order, 'modelset', modelset)
@@ -102,10 +110,11 @@ def makeModel(teff, logg=5, metal=0, vsini=1, rv=0, tell_alpha=1.0, airmass=1.0,
 		model    = smart.Model(teff=teff, logg=logg, metal=metal, order=str(order), modelset=modelset, instrument=instrument)
 
 	#elif data is not None and instrument == 'apogee':
-	elif instrument == 'apogee':
+	elif instrument.lower() == 'apogee':
+		
 		# not z; this should be keyword "metal"
 		if modelset == 'sonora':
-			model    = smart.Model(teff=teff, logg=logg, z=0.0, order='ALL', modelset=modelset, instrument=instrument)
+			model    = smart.Model(teff=teff, logg=logg, metal=0.0, order='ALL', modelset=modelset, instrument=instrument)
 		else:
 			model    = smart.Model(teff=teff, logg=logg, metal=metal, order='ALL', modelset=modelset, instrument=instrument)
 		# Dirty fix here
@@ -120,10 +129,12 @@ def makeModel(teff, logg=5, metal=0, vsini=1, rv=0, tell_alpha=1.0, airmass=1.0,
 		else:
 			model.flux = smart.broaden(wave=model.wave, flux=model.flux, vbroad=vmicro, rotate=False, gaussian=True)
 	
-	elif data is None and instrument in ['nirspec', 'hires', 'igrins']:
+	elif data is None and instrument.lower() in ['nirspec', 'hires', 'igrins']:
+		
 		model    = smart.Model(teff=teff, logg=logg, metal=metal, order=str(order), modelset=modelset, instrument=instrument)
 
 	else: # see if we have a model anyway
+		
 		try:
 			model    = smart.Model(teff=teff, logg=logg, metal=metal, order=str(order), modelset=modelset, instrument=instrument)
 		except:
@@ -132,6 +143,13 @@ def makeModel(teff, logg=5, metal=0, vsini=1, rv=0, tell_alpha=1.0, airmass=1.0,
 	# wavelength offset
 	#model.wave += wave_offset
 
+	#plt.figure(1)
+	#plt.plot(model.wave, model.flux, label='model')
+	#plt.plot(data.wave, data.flux, label='data')
+	#plt.legend()
+	#plt.show()
+
+
 	# apply vsini
 	if slow_rotation_broaden:
 		model.flux = smart.forward_model.rotation_broaden.rot_int_cmj(wave=model.wave, flux=model.flux, vsini=vsini, epsilon=0.6)
@@ -139,6 +157,12 @@ def makeModel(teff, logg=5, metal=0, vsini=1, rv=0, tell_alpha=1.0, airmass=1.0,
 	else:
 		model.flux = smart.broaden(wave=model.wave, flux=model.flux, vbroad=vsini, rotate=True, gaussian=False)
 	
+	#plt.figure(2)
+	#plt.plot(model.wave, model.flux, label='model')
+	#plt.plot(data.wave, data.flux, label='data')
+	#plt.legend()
+	#plt.show()
+
 	# apply rv (including the barycentric correction)
 	model.wave = rvShift(model.wave, rv=rv)
 	
@@ -147,13 +171,19 @@ def makeModel(teff, logg=5, metal=0, vsini=1, rv=0, tell_alpha=1.0, airmass=1.0,
 
 	## if binary is True: make a binary model
 	if binary:
+
 		model2      = smart.Model(teff=teff2, logg=logg2, metal=metal, order=str(order), modelset=modelset, instrument=instrument)
+		
 		# apply vsini
 		if slow_rotation_broaden:
+		
 			model.flux = smart.forward_model.rotation_broaden.rot_int_cmj(wave=model.wave, flux=model.flux, vsini=vsini, epsilon=0.6)
 			#model.flux = pyasl.rotBroad(wvl=model.wave, flux=model.flux, vsini=vsini, epsilon=0.6)
+		
 		else:
+		
 			model2.flux = smart.broaden(wave=model2.wave, flux=model2.flux, vbroad=vsini2, rotate=True, gaussian=False)
+		
 		# apply rv (including the barycentric correction)
 		model2.wave = rvShift(model2.wave, rv=rv2)
 		# linearly interpolate the model2 onto the model1 grid
@@ -171,14 +201,22 @@ def makeModel(teff, logg=5, metal=0, vsini=1, rv=0, tell_alpha=1.0, airmass=1.0,
 		model.flux += flux_scale * fit(model.wave)
 
 	if output_stellar_model:
+		
 		stellar_model = copy.deepcopy(model)
+		
 		if binary:
+		
 			model2.flux = flux_scale * fit(model.wave)
 
 	# apply telluric
 	if tell is True:
-		model = smart.applyTelluric(model=model, tell_alpha=tell_alpha, airmass=airmass, pwv=pwv, instrument=data.instrument)
+		model = smart.applyTelluric(model=model, tell_alpha=tell_alpha, airmass=airmass, pwv=pwv, instrument=data.instrument, order=order)
 
+	#plt.figure(3)
+	#plt.plot(model.wave, model.flux, label='model')
+	#plt.plot(data.wave, data.flux, label='data')
+	#plt.legend()
+	#plt.show()
 	
 	## fringe model; this is only optimized for Keck/NIRSPEC and Keck/KPIC for now!
 	#if (include_fringe_model is True) and (fringe_mcmc is True):
@@ -203,14 +241,22 @@ def makeModel(teff, logg=5, metal=0, vsini=1, rv=0, tell_alpha=1.0, airmass=1.0,
 	#	model.flux = model_tmp.flux
 
 	# instrumental LSF
-	if instrument in ['nirspec', 'hires', 'igrins']:
+	if instrument.lower() in ['nirspec', 'hires', 'igrins']:
 		model.flux = smart.broaden(wave=model.wave, flux=model.flux, vbroad=lsf, rotate=False, gaussian=True)
-	elif instrument == 'apogee':
+	elif instrument.lower() == 'apogee':
 		model.flux = ap.apogee_hack.spec.lsf.convolve(model.wave, model.flux, lsf=lsf, xlsf=xlsf).flatten()
 		model.wave = ap.apogee_hack.spec.lsf.apStarWavegrid()
 		# Remove the NANs
 		model.wave = model.wave[~np.isnan(model.flux)]
 		model.flux = model.flux[~np.isnan(model.flux)]
+	else:
+		model.flux = smart.broaden(wave=model.wave, flux=model.flux, vbroad=lsf, rotate=False, gaussian=True)
+
+	#plt.figure(4)
+	#plt.plot(model.wave, model.flux, label='model')
+	#plt.plot(data.wave, data.flux, label='data')
+	#plt.legend()
+	#plt.show()
 
 	if output_stellar_model:
 		stellar_model.flux = smart.broaden(wave=stellar_model.wave, flux=stellar_model.flux, vbroad=lsf, rotate=False, gaussian=True)
@@ -229,36 +275,55 @@ def makeModel(teff, logg=5, metal=0, vsini=1, rv=0, tell_alpha=1.0, airmass=1.0,
 
 	# integral resampling
 	if data is not None:
-		if instrument in ['nirspec', 'hires', 'igrins']:
+
+		if instrument.lower() in ['nirspec', 'hires', 'igrins', 'fire', 'kpic', 'nires']:
+
 			model.flux = np.array(smart.integralResample(xh=model.wave, yh=model.flux, xl=data.wave))
 			model.wave = data.wave
 
 			if output_stellar_model:
+
 				stellar_model.flux = np.array(smart.integralResample(xh=stellar_model.wave, yh=stellar_model.flux, xl=data.wave))
 				stellar_model.wave = data.wave
+
 				if binary:
+
 					model1.flux = np.array(smart.integralResample(xh=model1.wave, yh=model1.flux, xl=data.wave))
 					model1.wave = data.wave
 					model2.flux = np.array(smart.integralResample(xh=model2.wave, yh=model2.flux, xl=data.wave))
 					model2.wave = data.wave
 
 		# contunuum correction
-		if data.instrument in ['nirspec', 'hires', 'igrins', 'kpic']:
+		if instrument.lower() in ['nirspec', 'hires', 'igrins', 'kpic', 'fire', 'nires']:
+
 			niter = 5 # continuum iteration
+
 			if output_stellar_model:
+
 				model, cont_factor = smart.continuum(data=data, mdl=model, prop=True)
+				
 				for i in range(niter):
+				
 					model, cont_factor2 = smart.continuum(data=data, mdl=model, prop=True)
 					cont_factor *= cont_factor2
+				
 				stellar_model.flux *= cont_factor
+
 				if binary:
+
 					model1.flux *= cont_factor
 					model2.flux *= cont_factor
 			else:
+
 				model = smart.continuum(data=data, mdl=model)
+
 				for i in range(niter):
+				
 					model = smart.continuum(data=data, mdl=model)
-		elif data.instrument == 'apogee':
+
+
+		elif instrument.lower() == 'apogee':
+
 			## set the order in the continuum fit
 			deg         = 5
 
@@ -341,17 +406,40 @@ def makeModel(teff, logg=5, metal=0, vsini=1, rv=0, tell_alpha=1.0, airmass=1.0,
 			model.flux  = np.array( list(model2.flux) + list(model1.flux) + list(model0.flux) )
 			model.wave  = np.array( list(model2.wave) + list(model1.wave) + list(model0.wave) )
 
-	if instrument in ['nirspec', 'hires', 'igrins']:
+		else: # Any other instrument
+
+			model.flux = np.array(smart.integralResample(xh=model.wave, yh=model.flux, xl=data.wave))
+			model.wave = data.wave
+
+			if output_stellar_model:
+
+				stellar_model.flux = np.array(smart.integralResample(xh=stellar_model.wave, yh=stellar_model.flux, xl=data.wave))
+				stellar_model.wave = data.wave
+
+				if binary:
+
+					model1.flux = np.array(smart.integralResample(xh=model1.wave, yh=model1.flux, xl=data.wave))
+					model1.wave = data.wave
+					model2.flux = np.array(smart.integralResample(xh=model2.wave, yh=model2.flux, xl=data.wave))
+					model2.wave = data.wave
+
+	if instrument.lower() in ['nirspec', 'hires', 'igrins', 'fire', 'nires']:
+
 		# flux offset
 		model.flux += flux_offset
 		if output_stellar_model: 
 			stellar_model.flux += flux_offset
 			if binary:
 				model2.flux += flux_offset
+	
 	#model.flux **= (1 + flux_exponent_offset)
+	model.flux *= 10**flux_mult
+
+	if output_stellar_model: stellar_model.flux *= 10**flux_mult
 
 	# using curve_fit to fit the fringe parameters outside MCMC
 	if include_fringe_model and (fringe_mcmc is False):
+
 		s1, s2, s3, s4 = piece_wise_fringe_model_list
 
 		#residual      = copy.deepcopy(data)
@@ -740,7 +828,6 @@ def makeModelFringe(teff, logg=5, metal=0, vsini=1, rv=0, tell_alpha=1.0, airmas
 	else:
 		return model 
 
-# Fringe Model; testing
 
 def rvShift(wavelength, rv):
 	"""
@@ -761,7 +848,8 @@ def rvShift(wavelength, rv):
 	"""
 	return wavelength * ( 1 + rv / 299792.458)
 
-def applyTelluric(model, tell_alpha=1.0, airmass=1.5, pwv=0.5, instrument=None):
+
+def applyTelluric(model, tell_alpha=1.0, airmass=1.5, pwv=0.5, instrument=None, order=None):
 	"""
 	Apply the telluric model on the science model.
 
@@ -780,15 +868,18 @@ def applyTelluric(model, tell_alpha=1.0, airmass=1.5, pwv=0.5, instrument=None):
 	"""
 	# read in a telluric model
 	if instrument == 'hires':
+
 		wavelow  = model.wave[0]
 		wavehigh = model.wave[-1]
 
 	else:
+
 		wavelow  = model.wave[0] - 10
 		wavehigh = model.wave[-1] + 10
+
 	#telluric_model = smart.getTelluric(wavelow=wavelow, wavehigh=wavehigh, alpha=alpha, airmass=airmass)
 
-	telluric_model = smart.Model()
+	telluric_model = smart.Model(instrument=None, order=None)
 	telluric_model.wave, telluric_model.flux = 	smart.InterpTelluricModel(wavelow=wavelow, wavehigh=wavehigh, airmass=airmass, pwv=pwv)
 
 	# apply the telluric alpha parameter
@@ -803,14 +894,18 @@ def applyTelluric(model, tell_alpha=1.0, airmass=1.5, pwv=0.5, instrument=None):
 	#	model.flux *= telluric_model.flux
 
 	#elif len(model.wave) < len(telluric_model.wave):
+
 	## This should be always true; not true for optical wavelength
 	if instrument == 'hires':
+
 		model.flux = np.array(smart.integralResample(xh=model.wave, yh=model.flux, xl=telluric_model.wave))
 		model.wave = telluric_model.wave
 
 	else:
+
 		# select only every other wavelength grid if stellar models have higher resolution than the telluric model grids
 		if len(telluric_model.wave) < len(model.wave):
+		
 			model_wave_downsample = model.wave[::2]
 			model.flux = np.array(smart.integralResample(xh=model.wave, yh=model.flux, xl=model_wave_downsample))
 			model.wave = model_wave_downsample
@@ -824,6 +919,7 @@ def applyTelluric(model, tell_alpha=1.0, airmass=1.5, pwv=0.5, instrument=None):
 	#	model.flux *= telluric_model.flux
 		
 	return model
+
 
 def convolveTelluric(lsf, telluric_data, alpha=1.0, airmass='1.0', pwv='1.5'):
 	"""
@@ -842,6 +938,7 @@ def convolveTelluric(lsf, telluric_data, alpha=1.0, airmass='1.0', pwv='1.5'):
 		yh=telluric_model.flux, xl=telluric_data.wave))
 	telluric_model.wave = telluric_data.wave
 	return telluric_model
+
 
 def getLSF2(telluric_data, continuum=True, test=False, save_path=None):
 	"""

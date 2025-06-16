@@ -80,7 +80,14 @@ class Model():
         self.order = kwargs.get('order')
         self.instrument = kwargs.get('instrument','nirspec')
 
-        if (self.order != None) and (self.instrument in ['nirspec', 'hires', 'igrins']):
+        if self.instrument == None and self.order == None:  
+                
+            warnings.warn("Returning empty model object.", UserWarning)
+            self.wave   = kwargs.get('wave', [])
+            self.flux   = kwargs.get('flux', [])
+
+        elif (self.order != None) and (self.instrument.lower() in ['nirspec', 'hires', 'igrins']):
+
             self.teff     = kwargs.get('teff', 2500)
             self.logg     = kwargs.get('logg', 5.00)
             self.metal    = kwargs.get('metal', 0.00)
@@ -100,7 +107,8 @@ class Model():
                 self.wave = wave
                 self.flux = flux
 
-        elif self.instrument == 'apogee':
+        elif self.instrument.lower() == 'apogee':
+
             self.teff     = kwargs.get('teff', 2500)
             self.logg     = kwargs.get('logg', 5.00)
             self.metal    = kwargs.get('metal', 0.00)
@@ -113,7 +121,8 @@ class Model():
             wave, flux = smart.forward_model.InterpolateModel.InterpModel(self.teff, self.logg, self.metal, self.en,
                                                                           modelset=self.modelset, order=self.order, instrument=self.instrument)
 
-            if self.modelset == 'btsettl08':
+            if self.modelset.lower() == 'btsettl08':
+
                 self.wave = wave * 10000 #convert to Angstrom
                 self.flux = flux / 10000 #convert from erg/s/cm^2/micron to erg/s/cm^2/Angstrom 
 
@@ -121,7 +130,7 @@ class Model():
                 self.wave = wave # Angstrom
                 self.flux = flux # erg/s/cm^2/Angstrom
 
-        elif self.order == None and self.instrument in ['lowres1', 'lowres5', 'lowres10', 'lowres100']:
+        elif self.order == None and self.instrument.lower() in ['lowres1', 'lowres5', 'lowres10', 'lowres100']:
 
             self.teff     = kwargs.get('teff', 2500)
             self.logg     = kwargs.get('logg', 5.00)
@@ -135,7 +144,9 @@ class Model():
             self.flux = flux # erg/s/cm^2/Angstrom
 
         else:
+            
             try:
+
                 self.teff     = kwargs.get('teff', 2500)
                 self.logg     = kwargs.get('logg', 5.00)
                 self.metal    = kwargs.get('metal', 0.00)
@@ -144,11 +155,15 @@ class Model():
                 self.co       = kwargs.get('co', 0.00)
                 self.modelset = kwargs.get('modelset', 'btsettl08')
 
-                wave, flux = smart.forward_model.InterpolateModel.InterpModel(self.teff, self.logg, self.metal, self.en, self.kzz, self.co,
+                wave, flux = smart.forward_model.InterpolateModel.InterpModel(self.teff, self.logg, self.metal, self.en, kzz = self.kzz, co = self.co,
                                                                               modelset=self.modelset, order=self.order, instrument=self.instrument)
+
                 self.wave = wave # Angstrom
                 self.flux = flux # erg/s/cm^2/Angstrom
+            
             except:
+
+                warnings.warn("Returning empty model object.", UserWarning)
                 self.wave   = kwargs.get('wave', [])
                 self.flux   = kwargs.get('flux', [])
         

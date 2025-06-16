@@ -87,6 +87,7 @@ def GetModel(wavelow, wavehigh, method='pwv', wave=False, **kwargs):
     else:
         return telluric.flux
 
+
 def InterpTelluricModel(wavelow, wavehigh, airmass, pwv):
 
     FULL_PATH  = os.path.realpath(__file__)
@@ -127,6 +128,7 @@ def InterpTelluricModel(wavelow, wavehigh, airmass, pwv):
 
     return waves2, smart.utils.interpolations.bilinear_interpolation(airmass, pwv, Points)
 
+
 def convolveTelluric(lsf, airmass, pwv, telluric_data):
     """
     Return a convolved, normalized telluric transmission model given a telluric data and lsf.
@@ -146,6 +148,7 @@ def convolveTelluric(lsf, airmass, pwv, telluric_data):
     telluric_model.wave   = modelwave
 
     return telluric_model
+
 
 def makeTelluricModel(lsf, airmass, pwv, flux_offset, wave_offset, data, deg=2, niter=None, **kwargs):
     """
@@ -195,6 +198,7 @@ def makeTelluricModel(lsf, airmass, pwv, flux_offset, wave_offset, data, deg=2, 
 
     return model
 
+
 def convolveTelluricFringe(lsf, airmass, pwv, telluric_data, 
     a1_1, k1_1, p1_1, a2_1, k2_1, p2_1, 
     a1_2, k1_2, p1_2, a2_2, k2_2, p2_2, 
@@ -233,6 +237,7 @@ def convolveTelluricFringe(lsf, airmass, pwv, telluric_data,
     telluric_model.wave   = modelwave
 
     return telluric_model
+
 
 def convolveTelluricFringe(lsf, airmass, pwv, telluric_data, 
     a1_1, k1_1, p1_1, a2_1, k2_1, p2_1, 

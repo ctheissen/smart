@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 #
 # History
 # Feb. 01 2018 Dino Hsu
@@ -32,6 +31,7 @@ conf.auto_max_age = None
 #   `~astropy.coordinates.Angle` object (if float, in degrees)
 
 def barycorr(header, instrument='nirspec'):
+
 	"""
 	Calculate the barycentric correction using Astropy.
 	
@@ -42,13 +42,22 @@ def barycorr(header, instrument='nirspec'):
 	barycentric correction (float*u(km/s))
 
 	"""
-	#print(instrument)
-	if (instrument == 'nirspec') or (instrument == 'hires') or (instrument == 'kpic'):
-		longitude = 360 - (155 + 28.7/60 ) # degrees
-		latitude  = 19 + 49.7/60 #degrees
-		altitude  = 4160.
 
-		keck = EarthLocation.from_geodetic(lat=latitude*u.deg, lon=longitude*u.deg, height=altitude*u.m)
+	# Define the unit
+	meter = u.def_unit('meter', represents=u.m)
+
+	# Enable it globally for the session
+	u.add_enabled_units([meter])
+
+
+	#sys.exit()
+	if instrument.lower() in ['nirspec', 'hires', 'kpic']:
+
+		#longitude = 360 - (155 + 28.7/60 ) # degrees
+		#latitude  = 19 + 49.7/60 #degrees
+		#altitude  = 4160.
+
+		loc = EarthLocation.of_site('Keck Observatory')
 
 		date    = Time(header['DATE-OBS'], scale='utc')
 		jd      = date.jd
@@ -66,9 +75,9 @@ def barycorr(header, instrument='nirspec'):
 
 		barycorr = sc.radial_velocity_correction(obstime=Time(ut, scale='utc'), location=keck)
 
-	elif instrument == 'apogee':
+	elif instrument.lower() == 'apogee':
+
 		# TELESCOP= 'apo25m' or 'lco25m'  
-		#print('survey', header['SURVEY'], header['TELESCOP'])
 		if header['TELESCOP'] == 'lco25m':
 			# Las Campanas Observatory (LCO) https://airmass.org/observatories/lco
 			longitude = 360 - (70 + 41/60 + 33.36/3600 ) # degrees
@@ -92,23 +101,11 @@ def barycorr(header, instrument='nirspec'):
 
 		barycorr = sc.radial_velocity_correction(obstime=Time(ut, scale='utc'), location=apogee)
 
-	elif instrument == 'igrins':
-		## McDonalds Observatory
-		#longitude = 360 - (104+0/60+54.67839/3600) # degrees
-		#latitude  =  +1*(30+40/60+48.94384/3600) #degrees
-		#altitude  = 2025.960
-		#loc = EarthLocation.from_geodetic(lat=latitude*u.deg, lon=longitude*u.deg, height=altitude*u.m)
+	elif instrument.lower() == 'igrins':
+
 		loc = EarthLocation.of_site('Gemini South')
 
 		ut      = header['DATE-OBS']
-		#tmp_ra  = header['TELRA'].split('+')[1].split(':')
-		#ra      = 15* ( float(tmp_ra[0]) + float(tmp_ra[1])/60 + float(tmp_ra[2])/3600 )
-		#if '-' in header['TELDEC']:
-		#	tmp_dec = header['TELDEC'].split('-')[1].split(':')
-		#	dec      = -1 * (float(tmp_dec[0]) + float(tmp_dec[1])/60 + float(tmp_dec[2])/3600)
-		#else:
-		#	tmp_dec = header['TELDEC'].split('+')[1].split(':')
-		#	dec      = +1 * (float(tmp_dec[0]) + float(tmp_dec[1])/60 + float(tmp_dec[2])/3600)
 
 		ra   = float(header['OBJRA']) # deg
 		dec  = float(header['OBJDEC']) # deg
@@ -116,6 +113,19 @@ def barycorr(header, instrument='nirspec'):
 		sc      = SkyCoord(ra=ra*u.deg, dec=dec*u.deg, equinox='J2000', frame='fk5')
 
 		barycorr = sc.radial_velocity_correction(obstime=Time(ut, scale='utc'), location=loc)
+
+	elif instrument.lower() == 'nires':
+		
+		loc = EarthLocation.of_site('Keck Observatory', refresh_cache=True)
+
+		mjd  = header['AVE_MJD']
+
+		ra   = float(header['RA']) # deg
+		dec  = float(header['DEC']) # deg
+
+		sc      = SkyCoord(ra=ra*u.deg, dec=dec*u.deg, equinox='J2000', frame='fk5')
+
+		barycorr = sc.radial_velocity_correction(obstime=Time(mjd, format='mjd'), location=loc)
 
 	
 	return barycorr.to(u.km/u.s)
