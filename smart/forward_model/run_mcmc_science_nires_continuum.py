@@ -165,14 +165,16 @@ print(sci_data_name)
 print(data_path)
 print(data_path + sci_data_name + '.fits')
 #sys.exit()
-spectrum = splat.Spectrum(file='nires_J1259+0651B_20250516.fits', instrument='NIRES')
+
+spectrum = splat.Spectrum(file='nires_J1259+0651A_250516_NOTELL.fits', instrument='NIRES')
+#spectrum = splat.Spectrum(file='nires_J1259+0651B_250516_NOTELL.fits.fits', instrument='NIRES')
+
 #plt.plot(spectrum['wave'], spectrum['spec'], label='data')
 #plt.plot(spectrum['wave'], spectrum['err'], label='err')
 #print(spectrum['spec'])
 #plt.legend()
 #plt.show()
 #sys.exit()
-
 
 wave  = spectrum.wave.value * 10000 # convert microns to angstroms
 flux  = spectrum.flux.value  ### NEED TO CONVERT THESE UNITS!
@@ -199,11 +201,13 @@ plt.plot(wave, flux)
 plt.show()
 '''
 
-data        = smart.Spectrum(flux=flux.value, wave=wave.value, noise=noise.value, order=order, instrument=instrument)
-print(data.wave.shape)
-data.wave   = data.wave.flatten()
-data.flux   = data.flux.flatten()
-data.noise  = data.noise.flatten()
+data          = smart.Spectrum(flux=flux.value, wave=wave.value, noise=noise.value, order=order, instrument=instrument)
+data.wave     = data.wave.flatten()
+data.oriWave  = data.wave.flatten()
+data.flux     = data.flux.flatten()
+data.oriFlux  = data.flux.flatten()
+data.noise    = data.noise.flatten()
+data.oriNoise = data.noise.flatten()
 
 #data        = smart.Spectrum(name=sci_data_name, order=order, path=data_path, applymask=applymask, instrument=instrument)
 '''
@@ -291,8 +295,7 @@ lines          = open(save_to_path+'/mcmc_parameters.txt').read().splitlines()
 custom_mask    = json.loads(lines[3].split('custom_mask')[1])
 priors         = ast.literal_eval(lines[4].split('priors ')[1])
 barycorr       = json.loads(lines[11].split('barycorr')[1])
-#print(priors)
-#sys.exit()
+
 
 # no logg 5.5 for teff lower than 900
 if 'btsettl08' in modelset.lower() and priors['teff_min'] < 900: logg_max = 5.0
@@ -369,7 +372,7 @@ elif modelset.lower() == 'phoenix-aces-agss-cond-2011':
 						'vsini_min':0.0,                            'vsini_max':100.0,
 						'rv_min':-200.0,                           'rv_max':200.0,
 						'am_min':1.0,                               'am_max':3.0,
-						'pwv_min':0.5,                            	'pwv_max':20.0,
+						'pwv_min':0.5,                            	'pwv_max':5.0,
 						'A_min':-50,								'A_max':50,
 						'B_min':-0.6,								'B_max':0.6,
 						'N_min':0.10,                               'N_max':10.0, 	
@@ -387,21 +390,39 @@ if final_mcmc:
 	limits['rv_min'] = priors['rv_min'] - 10
 	limits['rv_max'] = priors['rv_max'] + 10
 
-## apply a custom mask
-#data.mask_custom(custom_mask=custom_mask)
-
-## add a pixel label for plotting
-length1     = len(data.flux)
-#pixel       = np.delete(np.arange(length1), data.mask)
-pixel       = np.arange(length1)
-pixel       = pixel[pixel_start:pixel_end]
-print('PIXELS:', pixel_start, pixel_end)
 
 ### mask the end pixels
-data.wave     = data.wave[pixel_start:pixel_end]
-data.flux     = data.flux[pixel_start:pixel_end]
-data.noise    = data.noise[pixel_start:pixel_end]
+data.wave      = data.wave[pixel_start:pixel_end]
+data.flux      = data.flux[pixel_start:pixel_end]
+data.noise     = data.noise[pixel_start:pixel_end]
+data.oriWave   = data.oriWave[pixel_start:pixel_end]
+data.oriFlux   = data.oriFlux[pixel_start:pixel_end]
+data.oriNoise  = data.oriNoise[pixel_start:pixel_end]
 
+## add a pixel label for plotting
+length1     = len(data.wave)
+pixel       = np.delete(np.arange(length1),custom_mask)
+#pixel       = np.delete(pixel, data.mask)
+print('MASK:', data.mask, len(data.mask))
+print('PIXELS:', pixel_start, pixel_end)
+
+
+## apply a custom mask
+print('CUSTOM_MASK', custom_mask)
+#plt.plot(data.wave, data.flux, alpha=0.5, label='data')
+#plt.plot(np.arange(len(data.wave)), data.flux, alpha=0.5, label='data')
+#print(len(data.flux))
+data.mask_custom(custom_mask=custom_mask)
+#print(len(data.flux))
+#plt.plot(data.wave, data.flux, alpha=0.5, label='data masked')
+#plt.plot(pixel, data.flux, alpha=0.5, label='data masked')
+#plt.legend()
+#plt.show()
+#sys.exit()
+
+#plt.plot(data.wave, data.flux)
+#plt.show()
+#sys.exit()
 
 
 # log file
@@ -451,13 +472,22 @@ def lnlike(theta, data, lsf0):
 	#print(model.wave)
 	#print(model.flux)
 	#print(model.wave.shape)
+
+	#plt.figure(1, figsize=(10,5))
+	#plt.plot(data.wave, data.flux, alpha=0.5, label='data')
+	#plt.plot(model.wave, model.flux, alpha=0.5, label='model')
+	#plt.plot(model.wave, data.flux-model.flux, alpha=0.5, label='O-C')
+	#plt.legend()
 	
 	#print('CHI0')
 	chisquare = smart.chisquare(data, model)/N**2
 	#print('3')
+	#print(-0.5 * (chisquare + np.sum(np.log(2*np.pi*(data.noise)**2))))
+	#plt.pause(0.2)
+	#plt.close(1)
 	#chisquare = smart.chisquare(data, model)
 
-	return chisquare #chi0 #-0.5 * (chisquare + np.sum(np.log(2*np.pi*(data.noise)**2)))
+	return -0.5 * (chisquare + np.sum(np.log(2*np.pi*(data.noise)**2)))
 	
 
 def lnprior(theta, limits=limits):
@@ -518,7 +548,8 @@ set_start_method('fork')
 with Pool() as pool:
 	#sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, args=(data, lsf, pwv), a=moves, pool=pool)
 	sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, args=(data, lsf0), a=moves, pool=pool,
-			moves=emcee.moves.KDEMove())
+			moves=emcee.moves.KDEMove()
+			)
 	time1 = time.time()
 	sampler.run_mcmc(pos, step, progress=True)
 	time2 = time.time()
@@ -585,7 +616,7 @@ teff_mcmc, logg_mcmc, metal_mcmc, rv_mcmc, N_mcmc, pwv_mcmc, am_mcmc, lsf_mcmc =
 	zip(*np.percentile(triangle_samples, [16, 50, 84], axis=0)))
 
 
-print(teff_mcmc, logg_mcmc, metal_mcmc, vsini_mcmc, rv_mcmc, N_mcmc, lsf_mcmc)
+print(teff_mcmc, logg_mcmc, metal_mcmc, rv_mcmc, N_mcmc, lsf_mcmc)
 
 # add the summary to the txt file
 
@@ -599,11 +630,11 @@ file_log2.write("metal_mcmc {}\n".format(str(metal_mcmc[0])))
 #file_log2.write("fsed_mcmc {}\n".format(str(fsed_mcmc[0])))
 #file_log2.write("vsini_mcmc {}\n".format(str(vsini_mcmc[0])))
 file_log2.write("rv_mcmc {}\n".format(str(rv_mcmc[0]+barycorr)))
-file_log2.write("am_mcmc {}\n".format(str(am_mcmc[0])))
+file_log2.write("N_mcmc {}\n".format(str(N_mcmc[0])))
 file_log2.write("pwv_mcmc {}\n".format(str(pwv_mcmc[0])))
+file_log2.write("am_mcmc {}\n".format(str(am_mcmc[0])))
 #file_log2.write("A_mcmc {}\n".format(str(A_mcmc[0])))
 #file_log2.write("B_mcmc {}\n".format(str(B_mcmc[0])))
-file_log2.write("N_mcmc {}\n".format(str(N_mcmc[0])))
 file_log2.write("lsf_mcmc {}\n".format(str(lsf_mcmc[0])))
 file_log2.write("teff_mcmc_e {}\n".format(str(max(abs(teff_mcmc[1]), abs(teff_mcmc[2])))))
 file_log2.write("logg_mcmc_e {}\n".format(str(max(abs(logg_mcmc[1]), abs(logg_mcmc[2])))))
@@ -611,11 +642,11 @@ file_log2.write("metal_mcmc_e {}\n".format(str(max(abs(metal_mcmc[1]), abs(metal
 #file_log2.write("fsed_mcmc_e {}\n".format(str(max(abs(fsed_mcmc[1]), abs(fsed_mcmc[2])))))
 #file_log2.write("vsini_mcmc_e {}\n".format(str(max(abs(vsini_mcmc[1]), abs(vsini_mcmc[2])))))
 file_log2.write("rv_mcmc_e {}\n".format(str(max(abs(rv_mcmc[1]), abs(rv_mcmc[2])))))
-file_log2.write("am_mcmc_e {}\n".format(str(max(abs(am_mcmc[1]), abs(am_mcmc[2])))))
+file_log2.write("N_mcmc_e {}\n".format(str(max(abs(N_mcmc[1]), abs(N_mcmc[2])))))
 file_log2.write("pwv_mcmc_e {}\n".format(str(max(abs(pwv_mcmc[1]), abs(pwv_mcmc[2])))))
+file_log2.write("am_mcmc_e {}\n".format(str(max(abs(am_mcmc[1]), abs(am_mcmc[2])))))
 #file_log2.write("A_mcmc_e {}\n".format(str(max(abs(A_mcmc[1]), abs(A_mcmc[2])))))
 #file_log2.write("B_mcmc_e {}\n".format(str(max(abs(B_mcmc[1]), abs(B_mcmc[2])))))
-file_log2.write("N_mcmc_e {}\n".format(str(max(abs(N_mcmc[1]), abs(N_mcmc[2])))))
 file_log2.write("lsf_mcmc_e {}\n".format(str(max(abs(lsf_mcmc[1]), abs(lsf_mcmc[2])))))
 # upper and lower uncertainties
 # upper uncertainties
@@ -625,11 +656,11 @@ file_log2.write("metal_mcmc_ue {}\n".format(str(abs(metal_mcmc[1]))))
 #file_log2.write("fsed_mcmc_ue {}\n".format(str(abs(fsed_mcmc[1]))))
 #file_log2.write("vsini_mcmc_ue {}\n".format(str(abs(vsini_mcmc[1]))))
 file_log2.write("rv_mcmc_ue {}\n".format(str(abs(rv_mcmc[1]))))
-file_log2.write("am_mcmc_ue {}\n".format(str(abs(am_mcmc[1]))))
+file_log2.write("N_mcmc_ue {}\n".format(str(abs(N_mcmc[1]))))
 file_log2.write("pwv_mcmc_ue {}\n".format(str(abs(pwv_mcmc[1]))))
+file_log2.write("am_mcmc_ue {}\n".format(str(abs(am_mcmc[1]))))
 #file_log2.write("A_mcmc_ue {}\n".format(str(abs(A_mcmc[1]))))
 #file_log2.write("B_mcmc_ue {}\n".format(str(abs(B_mcmc[1]))))
-file_log2.write("N_mcmc_ue {}\n".format(str(abs(N_mcmc[1]))))
 file_log2.write("lsf_mcmc_ue {}\n".format(str(abs(lsf_mcmc[1]))))
 # lower uncertainties
 file_log2.write("teff_mcmc_le {}\n".format(str(abs(teff_mcmc[2]))))
@@ -638,11 +669,11 @@ file_log2.write("metal_mcmc_le {}\n".format(str(abs(metal_mcmc[2]))))
 #file_log2.write("fsed_mcmc_le {}\n".format(str(abs(fsed_mcmc[2]))))
 #file_log2.write("vsini_mcmc_le {}\n".format(str(abs(vsini_mcmc[2]))))
 file_log2.write("rv_mcmc_le {}\n".format(str(abs(rv_mcmc[2]))))
-file_log2.write("am_mcmc_le {}\n".format(str(abs(am_mcmc[2]))))
+file_log2.write("N_mcmc_le {}\n".format(str(abs(N_mcmc[2]))))
 file_log2.write("pwv_mcmc_le {}\n".format(str(abs(pwv_mcmc[2]))))
+file_log2.write("am_mcmc_le {}\n".format(str(abs(am_mcmc[2]))))
 #file_log2.write("A_mcmc_le {}\n".format(str(abs(A_mcmc[2]))))
 #file_log2.write("B_mcmc_le {}\n".format(str(abs(B_mcmc[2]))))
-file_log2.write("N_mcmc_le {}\n".format(str(abs(N_mcmc[2]))))
 file_log2.write("lsf_mcmc_le {}\n".format(str(abs(lsf_mcmc[2]))))
 file_log2.close()
 
@@ -688,9 +719,9 @@ am    = am_mcmc[0]
 lsf   = lsf_mcmc[0]
 
 print('Creating model and data plot')
-model = model_fit.makeModel(teff=teff, logg=logg, metal=metal, rv=rv, #flux_mult=A,
+model, model_notell = model_fit.makeModel(teff=teff, logg=logg, metal=metal, rv=rv, #flux_mult=A,
 	pwv=pwv, airmass=am, lsf=lsf, order=str(data.order), data=data, modelset=modelset, 
-	include_fringe_model=False, instrument=instrument, tell=True)
+	include_fringe_model=False, instrument=instrument, tell=True, output_stellar_model=True)
 
 
 fig = plt.figure(figsize=(16,6))
@@ -703,12 +734,12 @@ plt.rc('font', family='sans-serif')
 plt.tick_params(labelsize=15)
 diff = data.flux-model.flux
 ax1.plot(model.wave, model.flux, color='C3', linestyle='-', label='model',alpha=0.8)
-#ax1.plot(model_notell.wave,model_notell.flux, color='C0', linestyle='-', label='model no telluric',alpha=0.8)
+ax1.plot(model_notell.wave,model_notell.flux, color='C0', linestyle='-', label='model no telluric',alpha=0.8)
 ax1.plot(data.wave, data.flux,'k-', label='data',alpha=0.5)
 #N=1
+ax3.fill_between(data.wave,-data.noise*N,data.noise*N,facecolor='C0',alpha=0.5)
 ax3.fill_between(data.wave,-data.noise,data.noise,facecolor='C1',alpha=0.5)
-#ax3.fill_between(data.wave,-data.noise*N,data.noise*N,facecolor='C0',alpha=0.5)
-ax1.axhline(y=0, color='k', linestyle=':',linewidth=0.5)
+ax3.axhline(y=0, color='k', linestyle=':',linewidth=0.5)
 #plt.ylim(-np.max(np.append(np.abs(data.noise),np.abs(data.flux-model.flux)))*1.2,np.max(data.flux)*1.2)
 ax1.set_ylabel("Flux ($cnts/s$)",fontsize=15)
 ax3.set_ylabel("Residuals ($cnts/s$)",fontsize=15)
@@ -774,12 +805,12 @@ file_log.write("logg_mcmc {} dex (cgs)\n".format(str(logg_mcmc)))
 file_log.write("metal_mcmc {} dex\n".format(str(metal_mcmc)))
 #file_log.write("fsed_mcmc {} dex\n".format(str(fsed_mcmc)))
 #file_log.write("vsini_mcmc {} km/s\n".format(str(vsini_mcmc)))
+file_log.write("N_mcmc {}\n".format(str(N_mcmc)))
 file_log.write("rv_mcmc {} km/s\n".format(str(rv_mcmc)))
 file_log.write("am_mcmc {}\n".format(str(am_mcmc)))
 file_log.write("pwv_mcmc {}\n".format(str(pwv_mcmc)))
 #file_log.write("A_mcmc {}\n".format(str(A_mcmc)))
 #file_log.write("B_mcmc {}\n".format(str(B_mcmc)))
-file_log.write("N_mcmc {}\n".format(str(N_mcmc)))
 file_log.write("lsf_mcmc {}\n".format(str(lsf_mcmc)))
 file_log.close()
 

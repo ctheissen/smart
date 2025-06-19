@@ -490,8 +490,11 @@ class Spectrum():
 
 				# The indices 0 to 3 correspond to wavelength, flux, noise
 				self.wave     = kwargs.get('wave')
+				self.oriWave  = kwargs.get('oriWave')
 				self.flux     = kwargs.get('flux')
+				self.oriFlux  = kwargs.get('oriFlux')
 				self.noise    = kwargs.get('noise')
+				self.oriNoise = kwargs.get('oriNoise')
 				self.mask     = []
 			except:
 				raise Exception('Instrument not implemented in SMART yet. Contact devs.')
