@@ -100,7 +100,7 @@ class Model():
             #    wave, flux = smart.forward_model.InterpolateModel.InterpModel(Teff=self.teff, Logg=self.logg, Metal=self.metal,
             #    modelset=self.modelset, order=self.order, instrument=self.instrument)
             
-            if self.modelset == 'btsettl08':
+            if self.modelset.lower() == 'btsettl08':
                 self.wave = wave * 10000 #convert to Angstrom
                 self.flux = flux / 10000 #convert from erg/s/cm^2/micron to erg/s/cm^2/Angstrom
             else:
@@ -152,10 +152,11 @@ class Model():
                 self.metal    = kwargs.get('metal', 0.00)
                 self.en       = kwargs.get('en', 0.00)
                 self.kzz      = kwargs.get('kzz', 0.00)
+                self.fsed     = kwargs.get('fsed', 20) # This is the "no cloud" case
                 self.co       = kwargs.get('co', 0.00)
                 self.modelset = kwargs.get('modelset', 'btsettl08')
 
-                wave, flux = smart.forward_model.InterpolateModel.InterpModel(self.teff, self.logg, self.metal, self.en, kzz = self.kzz, co = self.co,
+                wave, flux = smart.forward_model.InterpolateModel.InterpModel(self.teff, self.logg, self.metal, self.en, kzz = self.kzz, co = self.co, fsed = self.fsed,
                                                                               modelset=self.modelset, order=self.order, instrument=self.instrument)
 
                 self.wave = wave # Angstrom

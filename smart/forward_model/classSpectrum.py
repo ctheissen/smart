@@ -942,9 +942,9 @@ class Spectrum():
 		length1 = tell_sp.header['NAXIS1']
 
 		self.wave = np.delete(smart.waveSolution(np.arange(length1),
-			wfit0,wfit1,wfit2,wfit3,wfit4,wfit5,c3,c4, order=self.order), list(self.mask))
+			wfit0,wfit1,wfit2,wfit3,wfit4,wfit5,c3,c4, order=float(self.order)), list(self.mask))
 		self.oriWave = smart.waveSolution(np.arange(length1),
-			wfit0,wfit1,wfit2,wfit3,wfit4,wfit5,c3,c4, order=self.order)
+			wfit0,wfit1,wfit2,wfit3,wfit4,wfit5,c3,c4, order=float(self.order))
 
 		return self
 

@@ -70,24 +70,22 @@ def continuum(data, mdl, deg=10, prop=False, tell=False):
     if data.instrument.lower() in ['nirspec', 'hires', 'kpic', 'fire', 'nires']:
         mdldiv[mdldiv  <= mean_mdldiv - 2 * std_mdldiv] = mean_mdldiv
         mdldiv[mdldiv  >= mean_mdldiv + 2 * std_mdldiv] = mean_mdldiv
-
-        #plt.figure(1)
-        #print(np.__version__)
-        #print(np.where(np.isnan(mdldiv)==True))
-        #print(np.where(np.isinf(mdldiv)==True))
-        #print(np.where(np.isnan(data.noise)==True))
-        #print(np.where(np.isinf(data.noise)==True))
-        #print(np.where(data.noise==0))
-        #print(data.wave.shape)
-        #print(data.noise.shape)
-        #print(mdldiv.shape)
-        #plt.plot(data.wave, mdldiv)
-        #plt.show()
-
-        # need to deal with nans and infs
-        mdldiv[np.where(np.isnan(mdldiv)==True)] = 0
-        mdldiv[np.where(np.isinf(mdldiv)==True)] = 0
-
+        '''
+        plt.figure(1)
+        print(np.__version__)
+        print(np.where(np.isnan(data.flux)==True))
+        print(np.where(np.isinf(data.flux)==True))
+        print(np.where(np.isnan(mdldiv)==True))
+        print(np.where(np.isinf(mdldiv)==True))
+        print(np.where(np.isnan(data.noise)==True))
+        print(np.where(np.isinf(data.noise)==True))
+        print(np.where(data.noise==0))
+        print(data.wave.shape)
+        print(data.noise.shape)
+        print(mdldiv.shape)
+        plt.plot(data.wave, mdldiv)
+        plt.show()
+        '''
         try:
             pcont           = np.polyfit(data.wave, mdldiv, deg, w=1. / data.noise ** 2)
         except:

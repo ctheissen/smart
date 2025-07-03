@@ -73,7 +73,7 @@ def barycorr(header, instrument='nirspec'):
 			dec = header['DEC']
 			sc  = SkyCoord(ra=ra*u.deg, dec=dec*u.deg, equinox='J2000', frame='fk5')
 
-		barycorr = sc.radial_velocity_correction(obstime=Time(ut, scale='utc'), location=keck)
+		barycorr = sc.radial_velocity_correction(obstime=Time(ut, scale='utc'), location=loc)
 
 	elif instrument.lower() == 'apogee':
 
@@ -127,5 +127,22 @@ def barycorr(header, instrument='nirspec'):
 
 		barycorr = sc.radial_velocity_correction(obstime=Time(mjd, format='mjd'), location=loc)
 
-	
+
+	elif instrument.lower() == 'fire':
+		
+		loc = EarthLocation.of_site('Las Campanas Observatory', refresh_cache=True)
+
+		for i in header: print(i, header[i])
+		print('%sT%s'%(header['UT-DATE'], header['UT-TIME']))
+		epochT = Time('%sT%s'%(header['UT-DATE'], header['UT-TIME']), scale='utc')
+		print(epochT.mjd)
+		mjd  = epochT.mjd#header['AVE_MJD']
+
+		ra   = float(header['RA']) # deg
+		dec  = float(header['DEC']) # deg
+
+		sc      = SkyCoord(ra=ra*u.deg, dec=dec*u.deg, equinox='J2000', frame='fk5')
+
+		barycorr = sc.radial_velocity_correction(obstime=Time(mjd, format='mjd'), location=loc)
+
 	return barycorr.to(u.km/u.s)

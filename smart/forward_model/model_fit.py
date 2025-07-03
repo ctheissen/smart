@@ -100,6 +100,8 @@ def makeModel(teff, logg=5, metal=0, vsini=1, rv=0, tell_alpha=1.0, airmass=1.0,
 	data       = kwargs.get('data', None) # for continuum correction and resampling
 
 	output_stellar_model = kwargs.get('output_stellar_model', False)
+
+	#print('1')
 	
 	if data is not None and instrument.lower() in ['nirspec', 'hires', 'igrins']:
 		
@@ -148,26 +150,32 @@ def makeModel(teff, logg=5, metal=0, vsini=1, rv=0, tell_alpha=1.0, airmass=1.0,
 	#plt.plot(data.wave, data.flux, label='data')
 	#plt.legend()
 	#plt.show()
-
+	#print('2')
 
 	# apply vsini
-	if slow_rotation_broaden:
-		model.flux = smart.forward_model.rotation_broaden.rot_int_cmj(wave=model.wave, flux=model.flux, vsini=vsini, epsilon=0.6)
-		#model.flux = pyasl.rotBroad(wvl=model.wave, flux=model.flux, vsini=vsini, epsilon=0.6)
-	else:
-		model.flux = smart.broaden(wave=model.wave, flux=model.flux, vbroad=vsini, rotate=True, gaussian=False)
+	if vsini != 1: # Don't broaden if it's the default value
+		if slow_rotation_broaden:
+			model.flux = smart.forward_model.rotation_broaden.rot_int_cmj(wave=model.wave, flux=model.flux, vsini=vsini, epsilon=0.6)
+			#model.flux = pyasl.rotBroad(wvl=model.wave, flux=model.flux, vsini=vsini, epsilon=0.6)
+		else:
+			model.flux = smart.broaden(wave=model.wave, flux=model.flux, vbroad=vsini, rotate=True, gaussian=False)
 	
 	#plt.figure(2)
 	#plt.plot(model.wave, model.flux, label='model')
 	#plt.plot(data.wave, data.flux, label='data')
 	#plt.legend()
 	#plt.show()
+	#print('3')
+	#print(np.min(model.wave), np.max(model.wave))
 
 	# apply rv (including the barycentric correction)
 	model.wave = rvShift(model.wave, rv=rv)
 	
 	# flux veiling
 	model.flux += veiling
+
+	#print('3.5')
+	#print(np.min(model.wave), np.max(model.wave))
 
 	## if binary is True: make a binary model
 	if binary:
@@ -217,6 +225,8 @@ def makeModel(teff, logg=5, metal=0, vsini=1, rv=0, tell_alpha=1.0, airmass=1.0,
 	#plt.plot(data.wave, data.flux, label='data')
 	#plt.legend()
 	#plt.show()
+	#print('4')
+	#print(np.min(model.wave), np.max(model.wave))
 	
 	## fringe model; this is only optimized for Keck/NIRSPEC and Keck/KPIC for now!
 	#if (include_fringe_model is True) and (fringe_mcmc is True):
@@ -257,6 +267,7 @@ def makeModel(teff, logg=5, metal=0, vsini=1, rv=0, tell_alpha=1.0, airmass=1.0,
 	#plt.plot(data.wave, data.flux, label='data')
 	#plt.legend()
 	#plt.show()
+	#print('5')
 
 	if output_stellar_model:
 		stellar_model.flux = smart.broaden(wave=stellar_model.wave, flux=stellar_model.flux, vbroad=lsf, rotate=False, gaussian=True)
@@ -278,6 +289,8 @@ def makeModel(teff, logg=5, metal=0, vsini=1, rv=0, tell_alpha=1.0, airmass=1.0,
 
 		if instrument.lower() in ['nirspec', 'hires', 'igrins', 'fire', 'kpic', 'nires']:
 
+			#print(modelset, np.min(model.wave), np.max(model.wave))
+
 			model.flux = np.array(smart.integralResample(xh=model.wave, yh=model.flux, xl=data.wave))
 			model.wave = data.wave
 
@@ -292,6 +305,13 @@ def makeModel(teff, logg=5, metal=0, vsini=1, rv=0, tell_alpha=1.0, airmass=1.0,
 					model1.wave = data.wave
 					model2.flux = np.array(smart.integralResample(xh=model2.wave, yh=model2.flux, xl=data.wave))
 					model2.wave = data.wave
+
+		#plt.figure(41)
+		#plt.plot(model.wave, model.flux, label='model')
+		#plt.plot(data.wave, data.flux, label='data')
+		#plt.legend()
+		#plt.show()
+		#print('6')
 
 		# contunuum correction
 		if instrument.lower() in ['nirspec', 'hires', 'igrins', 'kpic', 'fire', 'nires']:
@@ -423,6 +443,13 @@ def makeModel(teff, logg=5, metal=0, vsini=1, rv=0, tell_alpha=1.0, airmass=1.0,
 					model2.flux = np.array(smart.integralResample(xh=model2.wave, yh=model2.flux, xl=data.wave))
 					model2.wave = data.wave
 
+	#plt.figure(5)
+	#plt.plot(model.wave, model.flux, label='model')
+	#plt.plot(data.wave, data.flux, label='data')
+	#plt.legend()
+	#plt.show()
+	#print('7')
+
 	if instrument.lower() in ['nirspec', 'hires', 'igrins', 'fire', 'nires']:
 
 		# flux offset
@@ -435,7 +462,8 @@ def makeModel(teff, logg=5, metal=0, vsini=1, rv=0, tell_alpha=1.0, airmass=1.0,
 	#model.flux **= (1 + flux_exponent_offset)
 	model.flux *= 10**flux_mult
 
-	if output_stellar_model: stellar_model.flux *= 10**flux_mult
+	if output_stellar_model: 
+		stellar_model.flux *= 10**flux_mult
 
 	# using curve_fit to fit the fringe parameters outside MCMC
 	if include_fringe_model and (fringe_mcmc is False):
@@ -867,6 +895,7 @@ def applyTelluric(model, tell_alpha=1.0, airmass=1.5, pwv=0.5, instrument=None, 
 
 	"""
 	# read in a telluric model
+	
 	if instrument == 'hires':
 
 		wavelow  = model.wave[0]

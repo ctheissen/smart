@@ -1,9 +1,9 @@
 import pandas as pd
 import numpy as np
 import matplotlib
-matplotlib.use('Agg')
+#matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-plt.ioff()
+#plt.ioff()
 import matplotlib.gridspec as gridspec
 from astropy.io import fits
 import emcee
@@ -331,22 +331,22 @@ A_const       = 0.05 * abs(np.median(data.flux))
 if instrument == 'kpic':
 	N_max = 20.0
 else:
-	N_max = 5.0
+	N_max = 20.0
 
-if modelset == 'btsettl08':
+if 'btsettl08' in modelset.lower():
 	limits         = { 
-						'teff_min':max(priors['teff_min']-300,500), 'teff_max':min(priors['teff_max']+300,3500),
+						'teff_min':max(priors['teff_min']-300,500), 'teff_max':min(priors['teff_max']+300,6000),
 						'logg_min':3.5,                             'logg_max':logg_max,
 						'vsini_min':0.0,                            'vsini_max':100.0,
 						'rv_min':-200.0,                            'rv_max':200.0,
 						'am_min':1.0,                               'am_max':3.0,
 						'pwv_min':0.5,                            	'pwv_max':20.0,
-						'A_min':-A_const,							'A_max':A_const,
+						'A_min':-5,							        'A_max':5,
 						'B_min':-0.6,                              	'B_max':0.6,
 						'N_min':0.10,                               'N_max':N_max 				
 					}
 
-elif modelset == 'sonora':
+elif modelset.lower() == 'sonora':
 	limits         = { 
 						'teff_min':max(priors['teff_min']-300,200), 'teff_max':min(priors['teff_max']+300,2400),
 						'logg_min':3.5,                             'logg_max':logg_max,
@@ -359,7 +359,7 @@ elif modelset == 'sonora':
 						'N_min':0.10,                               'N_max':N_max 				
 					}
 
-elif modelset == 'phoenixaces':
+elif modelset.lower() == 'phoenixaces':
 	limits         = { 
 						'teff_min':max(priors['teff_min']-300,2300), 'teff_max':min(priors['teff_max']+300,10000),
 						'logg_min':3.5,                             'logg_max':logg_max,
@@ -395,8 +395,13 @@ if final_mcmc:
 	limits['rv_max'] = priors['rv_max'] + 10
 
 ## add a pixel label for plotting
-length1     = len(data.oriWave)
-pixel       = np.delete(np.arange(length1), data.mask)
+length1    = len(data.oriWave)
+pixel      = np.arange(len(data.wave))
+pixel_drop = np.copy(pixel)
+pixel_drop = np.delete(pixel_drop, pixel[pixel_start: pixel_end]).tolist()
+
+#pixel       = np.delete(np.arange(length1), data.mask)
+'''
 pixel       = pixel[pixel_start:pixel_end]
 
 ### mask the end pixels
@@ -404,11 +409,11 @@ data.wave     = data.wave[pixel_start:pixel_end]
 data.flux     = data.flux[pixel_start:pixel_end]
 data.noise    = data.noise[pixel_start:pixel_end]
 
-if instrument != 'hires':
+if instrument.lower() != 'hires':
 	tell_sp.wave  = tell_sp.wave[pixel_start:pixel_end]
 	tell_sp.flux  = tell_sp.flux[pixel_start:pixel_end]
 	tell_sp.noise = tell_sp.noise[pixel_start:pixel_end]
-
+'''
 #if final_mcmc:
 #	priors, limits         = mcmc_utils.generate_final_priors_and_limits(sp_type=sp_type, barycorr=barycorr, save_to_path1=save_to_path1)
 #else:
@@ -478,8 +483,16 @@ def lnlike(theta, data, lsf):
 		model = model_fit.makeModel(teff=teff, logg=logg, metal=0.0, vsini=vsini, rv=rv, tell_alpha=1.0, wave_offset=B, flux_offset=A,
 			lsf=lsf, order=str(data.order), data=data, modelset=modelset, airmass=am, pwv=pwv, include_fringe_model=include_fringe_model, instrument=instrument)
 
-	chisquare = smart.chisquare(data, model)/N**2
 
+	chisquare = smart.chisquare(data, model)/N**2
+	'''
+	print(-0.5 * (chisquare + np.sum(np.log(2*np.pi*(data.noise*N)**2))))
+	plt.figure(1)
+	plt.plot(data.wave, data.flux, label='data')
+	plt.plot(model.wave, model.flux, label='model')
+	plt.pause(0.2)
+	plt.close()
+	'''
 	return -0.5 * (chisquare + np.sum(np.log(2*np.pi*(data.noise*N)**2)))
 
 def lnprior(theta, limits=limits):
@@ -503,6 +516,8 @@ def lnprior(theta, limits=limits):
 	return -np.inf
 
 def lnprob(theta, data, lsf):
+
+	#print(theta)
 		
 	lnp = lnprior(theta)
 		
@@ -520,6 +535,13 @@ pos = [np.array([	priors['teff_min']  + (priors['teff_max']   - priors['teff_min
 					priors['A_min']     + (priors['A_max']      - priors['A_min'])     * np.random.uniform(),
 					priors['B_min']     + (priors['B_max']      - priors['B_min'])     * np.random.uniform(),
 					priors['N_min']     + (priors['N_max']      - priors['N_min'])     * np.random.uniform()]) for i in range(nwalkers)]
+
+
+sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, args=(data, lsf), a=moves, moves=emcee.moves.KDEMove())
+time1 = time.time()
+sampler.run_mcmc(pos, step, progress=True)
+time2 = time.time()
+'''
 ## multiprocessing
 
 set_start_method('fork')
@@ -530,7 +552,7 @@ with Pool() as pool:
 	time1 = time.time()
 	sampler.run_mcmc(pos, step, progress=True)
 	time2 = time.time()
-
+'''
 np.save(save_to_path + '/sampler_chain', sampler.chain[:, :, :])
 
 samples = sampler.chain[:, :, :].reshape((-1, ndim))
