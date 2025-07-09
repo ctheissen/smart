@@ -166,8 +166,9 @@ print(data_path)
 print(data_path + sci_data_name + '.fits')
 #sys.exit()
 
-spectrum = splat.Spectrum(file='nires_J1259+0651A_250516_NOTELL.fits', instrument='NIRES')
+#spectrum = splat.Spectrum(file='nires_J1259+0651A_250516_NOTELL.fits', instrument='NIRES')
 #spectrum = splat.Spectrum(file='nires_J1259+0651B_250516_NOTELL.fits.fits', instrument='NIRES')
+spectrum = splat.Spectrum(file='spectra1107.fits', instrument='NIRES') # 1104-1107 = A, 1108-1111 = B
 
 #plt.plot(spectrum['wave'], spectrum['spec'], label='data')
 #plt.plot(spectrum['wave'], spectrum['err'], label='err')

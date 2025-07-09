@@ -76,9 +76,9 @@ class Model():
     >>> model.plot()
     """
     def __init__(self, **kwargs):
-        self.path  = kwargs.get('path')
-        self.order = kwargs.get('order')
-        self.instrument = kwargs.get('instrument','nirspec')
+        self.path       = kwargs.get('path')
+        self.order      = kwargs.get('order', None)
+        self.instrument = kwargs.get('instrument',None)
 
         if self.instrument == None and self.order == None:  
                 
@@ -145,28 +145,28 @@ class Model():
 
         else:
             
-            try:
+            #try:
 
-                self.teff     = kwargs.get('teff', 2500)
-                self.logg     = kwargs.get('logg', 5.00)
-                self.metal    = kwargs.get('metal', 0.00)
-                self.en       = kwargs.get('en', 0.00)
-                self.kzz      = kwargs.get('kzz', 0.00)
-                self.fsed     = kwargs.get('fsed', 20) # This is the "no cloud" case
-                self.co       = kwargs.get('co', 0.00)
-                self.modelset = kwargs.get('modelset', 'btsettl08')
+            self.teff     = kwargs.get('teff', 2500)
+            self.logg     = kwargs.get('logg', 5.00)
+            self.metal    = kwargs.get('metal', 0.00)
+            self.en       = kwargs.get('en', 0.00)
+            self.kzz      = kwargs.get('kzz', 0.00)
+            self.fsed     = kwargs.get('fsed', 20) # This is the "no cloud" case
+            self.co       = kwargs.get('co', 0.00)
+            self.modelset = kwargs.get('modelset', 'btsettl08')
 
-                wave, flux = smart.forward_model.InterpolateModel.InterpModel(self.teff, self.logg, self.metal, self.en, kzz = self.kzz, co = self.co, fsed = self.fsed,
-                                                                              modelset=self.modelset, order=self.order, instrument=self.instrument)
+            wave, flux = smart.forward_model.InterpolateModel.InterpModel(self.teff, self.logg, self.metal, self.en, kzz = self.kzz, co = self.co, fsed = self.fsed,
+                                                                          modelset=self.modelset, order=self.order, instrument=self.instrument)
 
-                self.wave = wave # Angstrom
-                self.flux = flux # erg/s/cm^2/Angstrom
+            self.wave = wave # Angstrom
+            self.flux = flux # erg/s/cm^2/Angstrom
             
-            except:
+            #except:
 
-                warnings.warn("Returning empty model object.", UserWarning)
-                self.wave   = kwargs.get('wave', [])
-                self.flux   = kwargs.get('flux', [])
+            #    warnings.warn("Returning empty model object.", UserWarning)
+            #    self.wave   = kwargs.get('wave', [])
+            #    self.flux   = kwargs.get('flux', [])
         
 
     def normalize(self, filter_size=500, **kwargs):

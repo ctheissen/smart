@@ -114,11 +114,27 @@ def barycorr(header, instrument='nirspec'):
 
 		barycorr = sc.radial_velocity_correction(obstime=Time(ut, scale='utc'), location=loc)
 
+	elif instrument.lower() == 'igrins2':
+		
+		loc = EarthLocation.of_site('Gemini North')
+
+		ut       = header['DATE-OBS']
+		
+		ra       = float(header['RA']) # deg
+		dec      = float(header['DEC']) # deg
+
+		sc       = SkyCoord(ra=ra*u.deg, dec=dec*u.deg, equinox='J2000', frame='fk5')
+		
+		barycorr = sc.radial_velocity_correction(obstime=Time(ut, scale='utc'), location=loc)
+
 	elif instrument.lower() == 'nires':
 		
 		loc = EarthLocation.of_site('Keck Observatory', refresh_cache=True)
 
-		mjd  = header['AVE_MJD']
+		try:
+			mjd  = header['AVE_MJD']
+		except: 
+			mjd  = header['MJD'] # For single nods
 
 		ra   = float(header['RA']) # deg
 		dec  = float(header['DEC']) # deg
