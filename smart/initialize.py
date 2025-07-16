@@ -25,7 +25,8 @@ ModelSets = {
     'sonora-2018' : 'SONORA_2018', # bobcat
     'sonora-2021' : 'SONORA_2021', # cholla
     'sonora-2023' : 'SONORA_2023', # elfowl
-    'sonora-2024' : 'SONORA_2024'  # diamondback
+    'sonora-2024' : 'SONORA_2024',  # diamondback
+    'sonora-2025' : 'SONORA_2025'  # elfowl v2
 }
 
 def getModelgrid(modelset = 'phoenix-aces-agss-cond-2011'):

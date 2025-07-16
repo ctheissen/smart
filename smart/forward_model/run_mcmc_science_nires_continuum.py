@@ -51,14 +51,14 @@ parser.add_argument("date_obs",metavar='dobs',type=str,
 parser.add_argument("sci_data_name",metavar='sci',type=str,
     default=None, help="science data name", nargs="+")
 
-#parser.add_argument("tell_data_name",metavar='tell',type=str,
-#    default=None, help="telluric data name", nargs="+")
+parser.add_argument("tell_data_name",metavar='tell',type=str,
+    default=None, help="telluric data name", nargs="+")
 
 parser.add_argument("data_path",type=str,
     default=None, help="science data path", nargs="+")
 
-#parser.add_argument("tell_path",type=str,
-#    default=None, help="telluric data path", nargs="+")
+parser.add_argument("tell_path",type=str,
+    default=None, help="telluric data path", nargs="+")
 
 parser.add_argument("save_to_path",type=str,
     default=None, help="output path", nargs="+")
@@ -128,8 +128,8 @@ instrument             = str(args.instrument)
 date_obs               = str(args.date_obs[0])
 sci_data_name          = str(args.sci_data_name[0])
 data_path              = str(args.data_path[0])
-#tell_data_name         = str(args.tell_data_name[0])
-#tell_path              = str(args.tell_path[0])
+tell_data_name         = str(args.tell_data_name[0])
+tell_path              = str(args.tell_path[0])
 save_to_path_base      = str(args.save_to_path[0])
 lsf0                   = float(args.lsf[0])
 ndim, nwalkers, step   = int(args.ndim), int(args.nwalkers), int(args.step)
@@ -161,14 +161,24 @@ dt_string = now.strftime("%H:%M:%S")
 #####################################
 
 print('MASK', applymask)
-print(sci_data_name)
-print(data_path)
-print(data_path + sci_data_name + '.fits')
+#print(sci_data_name)
+#print(data_path)
+#print(data_path + sci_data_name + '.fits')
+#print(tell_path)
+#print(tell_data_name)
+#print(tell_path + tell_data_name + '.fits')
 #sys.exit()
 
 #spectrum = splat.Spectrum(file='nires_J1259+0651A_250516_NOTELL.fits', instrument='NIRES')
 #spectrum = splat.Spectrum(file='nires_J1259+0651B_250516_NOTELL.fits.fits', instrument='NIRES')
-spectrum = splat.Spectrum(file='spectra1107.fits', instrument='NIRES') # 1104-1107 = A, 1108-1111 = B
+spectrum = splat.Spectrum(file=data_path+'%s.fits'%sci_data_name, instrument='NIRES')
+#spectrum = splat.Spectrum(file='spectra1108.fits', instrument='NIRES') # 1104-1107 = A, 1108-1111 = B
+
+# Read in the telluric with the new wavelength solution
+hdulT = fits.open(tell_path+'%s.fits'%tell_data_name)
+#print(hdulT.info())
+newWaves = hdulT[1].data
+
 
 #plt.plot(spectrum['wave'], spectrum['spec'], label='data')
 #plt.plot(spectrum['wave'], spectrum['err'], label='err')
@@ -177,14 +187,16 @@ spectrum = splat.Spectrum(file='spectra1107.fits', instrument='NIRES') # 1104-11
 #plt.show()
 #sys.exit()
 
-wave  = spectrum.wave.value * 10000 # convert microns to angstroms
+#wave  = spectrum.wave.value * 10000 # convert microns to angstroms
 flux  = spectrum.flux.value  ### NEED TO CONVERT THESE UNITS!
 noise = spectrum.noise.value  ### NEED TO CONVERT THESE UNITS!
 
 mask   = np.where( (np.isnan(flux) ) )[0]
-wave   = wave  * u.angstrom
+wave   = newWaves  * u.angstrom
 flux   = flux  * u.erg/u.cm**2/u.micron/u.s #* 1e6 * u.Jy.cgs 
 noise  = noise * u.erg/u.cm**2/u.micron/u.s #* 1e6 * u.Jy.cgs 
+
+print('WAVES:', wave)
 
 # convert to flux density
 #flux  *= speedoflight.cgs / (wave.to(u.m) * wave.to(u.angstrom)) 
@@ -202,13 +214,15 @@ plt.plot(wave, flux)
 plt.show()
 '''
 
-data          = smart.Spectrum(flux=flux.value, wave=wave.value, noise=noise.value, order=order, instrument=instrument)
-data.wave     = data.wave.flatten()
-data.oriWave  = data.wave.flatten()
-data.flux     = data.flux.flatten()
-data.oriFlux  = data.flux.flatten()
-data.noise    = data.noise.flatten()
-data.oriNoise = data.noise.flatten()
+data            = smart.Spectrum(flux=flux.value, wave=wave.value, noise=noise.value, order='None', instrument='None')
+data.order      = order
+data.instrument = instrument
+data.wave       = data.wave.flatten()
+data.oriWave    = data.wave.flatten()
+data.flux       = data.flux.flatten()
+data.oriFlux    = data.flux.flatten()
+data.noise      = data.noise.flatten()
+data.oriNoise   = data.noise.flatten()
 
 #data        = smart.Spectrum(name=sci_data_name, order=order, path=data_path, applymask=applymask, instrument=instrument)
 '''
@@ -316,7 +330,7 @@ if 'btsettl08' in modelset.lower():
 						'pwv_min':0.5,                            	'pwv_max':20.0,
 						'A_min':-50,							    'A_max':50,
 						'B_min':-50,                              	'B_max':50,
-						'N_min':0.10,                               'N_max':10.0,
+						'N_min':0.10,                               'N_max':100.0,
 						'lsf_min':1,                                'lsf_max':200 				
 					}
 
@@ -376,7 +390,7 @@ elif modelset.lower() == 'phoenix-aces-agss-cond-2011':
 						'pwv_min':0.5,                            	'pwv_max':20.0,
 						'A_min':-50,								'A_max':50,
 						'B_min':-0.6,								'B_max':0.6,
-						'N_min':0.10,                               'N_max':10.0, 	
+						'N_min':0.10,                               'N_max':20.0, 	
 						'lsf_min':1,                                'lsf_max':200 				
 					}
 
@@ -406,6 +420,7 @@ pixel       = np.delete(np.arange(length1),custom_mask)
 #pixel       = np.delete(pixel, data.mask)
 print('MASK:', data.mask, len(data.mask))
 print('PIXELS:', pixel_start, pixel_end)
+
 
 
 ## apply a custom mask
@@ -488,7 +503,7 @@ def lnlike(theta, data, lsf0):
 	#plt.close(1)
 	#chisquare = smart.chisquare(data, model)
 
-	return -0.5 * (chisquare + np.sum(np.log(2*np.pi*(data.noise)**2)))
+	return -0.5 * (chisquare + np.sum(np.log(2*np.pi*(data.noise*N)**2)))
 	
 
 def lnprior(theta, limits=limits):

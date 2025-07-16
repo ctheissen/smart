@@ -49,8 +49,27 @@ class Spectrum():
 
 	"""
 	def __init__(self, **kwargs):
-		self.instrument = kwargs.get('instrument','nirspec')
-		if (self.instrument == 'nirspec') or (self.instrument == 'kpic'):
+		self.instrument = kwargs.get('instrument',None)
+		self.order      = kwargs.get('order',None)
+		print(self.instrument)
+
+		if self.instrument == None and self.order == None: 
+			self.name      = kwargs.get('name')
+			self.order     = kwargs.get('order')
+			self.path      = kwargs.get('path')
+			self.apply_sigma_mask = kwargs.get('apply_sigma_mask', False)
+			#self.manaulmask = kwargs('manaulmask', False)
+
+			# The indices 0 to 3 correspond to wavelength, flux, noise
+			self.wave     = kwargs.get('wave')
+			self.oriWave  = kwargs.get('oriWave')
+			self.flux     = kwargs.get('flux')
+			self.oriFlux  = kwargs.get('oriFlux')
+			self.noise    = kwargs.get('noise')
+			self.oriNoise = kwargs.get('oriNoise')
+			self.mask     = []
+
+		elif (self.instrument.lower() == 'nirspec') or (self.instrument.lower() == 'kpic'):
 			self.name      = kwargs.get('name')
 			self.order     = kwargs.get('order')
 			self.path      = kwargs.get('path')
@@ -479,6 +498,35 @@ class Spectrum():
 			self.oriNoise = hdulist[2].data
 			self.mask     = []
 
+		elif self.instrument.lower() == 'nires':
+
+			self.name      = kwargs.get('name')
+			self.order     = kwargs.get('order', 'all')
+			self.path      = kwargs.get('path')
+			self.apply_sigma_mask = kwargs.get('apply_sigma_mask', False)
+			#self.manaulmask = kwargs('manaulmask', False)
+
+			if self.path == None:
+				self.path = './'
+
+			#print(self.name)
+			#print(self.path)
+			fullpath = self.path + '/' + self.name + '.fits'
+			#print(fullpath)
+
+			import splat
+			spectrum = splat.Spectrum(fullpath, instrument='NIRES')
+
+			#The indices 0 to 3 correspond to wavelength, flux, noise, and sky
+			self.header   = spectrum.header
+			#print(self.header)
+			self.wave     = spectrum.wave.value*1e4 # convert to angstrom
+			self.flux     = spectrum.flux.value
+			self.noise    = spectrum.noise.value
+			self.oriWave  = spectrum.wave.value*1e4 # convert to angstrom
+			self.oriFlux  = spectrum.flux.value
+			self.oriNoise = spectrum.noise.value
+			self.mask     = []
 
 		else: 
 			try: 

@@ -119,7 +119,7 @@ def barycorr(header, instrument='nirspec'):
 		loc = EarthLocation.of_site('Gemini North')
 
 		ut       = header['DATE-OBS']
-		
+
 		ra       = float(header['RA']) # deg
 		dec      = float(header['DEC']) # deg
 
@@ -148,10 +148,10 @@ def barycorr(header, instrument='nirspec'):
 		
 		loc = EarthLocation.of_site('Las Campanas Observatory', refresh_cache=True)
 
-		for i in header: print(i, header[i])
-		print('%sT%s'%(header['UT-DATE'], header['UT-TIME']))
+		#for i in header: print(i, header[i])
+		#print('%sT%s'%(header['UT-DATE'], header['UT-TIME']))
 		epochT = Time('%sT%s'%(header['UT-DATE'], header['UT-TIME']), scale='utc')
-		print(epochT.mjd)
+		#print(epochT.mjd)
 		mjd  = epochT.mjd#header['AVE_MJD']
 
 		ra   = float(header['RA']) # deg

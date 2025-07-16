@@ -35,7 +35,7 @@ def continuum(data, mdl, deg=10, prop=False, tell=False):
     #print('model wave:', type(mdl.wave), mdl.wave[-1])
     #print(data.wave)
     #print(mdl.wave)
-    if data.instrument.lower() in ['nirspec', 'hires', 'igrins', 'kpic', 'fire', 'nires']:
+    if data.instrument.lower() in ['nirspec', 'hires', 'igrins', 'kpic', 'fire', 'nires', 'jwst_nirspec']:
         mdl_range      = np.where((mdl.wave >= data.wave[0]) & (mdl.wave <= data.wave[-1]))
         mdl_wave       = mdl.wave[mdl_range]
         mdl_flux       = mdl.flux[mdl_range]
@@ -100,6 +100,32 @@ def continuum(data, mdl, deg=10, prop=False, tell=False):
         #except:
         #    ## if the length of the data flux and noise are not the same
         pcont           = np.polyfit(wave, mdldiv, deg)
+
+
+    elif data.instrument.lower() == 'jwst_nirspec':
+
+        # continuum
+        deg             = 2
+        mdldiv          = data.flux/mdl_flux
+        
+        ## find mean and stdev of mdldiv
+        mean_mdldiv     = np.nanmean(mdldiv)
+        std_mdldiv      = np.nanstd(mdldiv)
+        
+        select_poly_fit = np.where(np.absolute(mdldiv - mean_mdldiv) <= 2 * std_mdldiv)
+        # TBD if we need to run another outlier rejection with replaced mean values
+        #mdldiv[mdldiv  >= mean_mdldiv + 2 * std_mdldiv] = mean_mdldiv
+        #mdldiv[mdldiv  <= mean_mdldiv - 2 * std_mdldiv] = mean_mdldiv
+    
+        data_wave_fit   = data.wave[select_poly_fit]
+        mdldiv          = mdldiv[select_poly_fit]
+    
+        pcont = np.polyfit(data_wave_fit, mdldiv, deg)
+
+        #plt.figure(1)
+        #plt.plot(data_wave_fit, mdldiv)
+        #plt.show()
+    
 
     ## outlier rejection for apogee
     elif data.instrument.lower() in ['apogee']:
@@ -244,7 +270,7 @@ def fringeTelluric(data):
 
     return data, sineFit(data.wave,*popt)-popt[-1]
 
-def continuumTelluric(data, model=None):
+def continuumTelluric(data, model=None, instrument='nirspec'):
     """
     Return a continnum telluric standard data.
     Default: return a telluric flux of mean 1.
@@ -279,7 +305,7 @@ def continuumTelluric(data, model=None):
         wavehigh = data.wave[-1] + 20
         model    = smart.getTelluric(wavelow,wavehigh)
 
-    if not data.apply_sigma_mask:
+    if not data.apply_sigma_mask and instrument.lower() not in ['nires', 'fire']:
         data2 = copy.deepcopy(data)
         data.maskBySigmas(sigma=1.5)
     else:

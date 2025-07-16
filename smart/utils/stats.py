@@ -9,7 +9,7 @@ def chisquare(data, model, dof=0):
     ## handling noise that has nan values
     d       = copy.deepcopy(data)
     m       = copy.deepcopy(model)
-    mask    = np.isnan(d.noise)
+    mask    = np.isnan(d.noise) | (d.noise==0)
 
     ## invert the boolean mask and select only the non-nan values
     d.flux  = d.flux[np.invert(mask)]

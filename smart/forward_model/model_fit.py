@@ -40,7 +40,9 @@ def makeModel(teff, logg=5, metal=0, vsini=1, rv=0, tell_alpha=1.0, airmass=1.0,
 	veiling      = kwargs.get('veiling', 0)    # flux veiling parameter
 	lsf          = kwargs.get('lsf', 4.5)   # instrumental LSF
 	flux_mult    = kwargs.get('flux_mult', 0)   # flux multiplier
+	continuum    = kwargs.get('continuum', True)   # continuum correct the spectrum
 	smooth       = kwargs.get('smooth', False)   # smooth the spectrum
+	smoothbreads = kwargs.get('smoothbreads', False)   # smooth the spectrum with breads
 	include_fringe_model = kwargs.get('include_fringe_model', False)
 	fringe_mcmc  =  kwargs.get('fringe_mcmc', False)
 	piece_wise_fringe_model_list = kwargs.get('piece_wise_fringe_model_list', [0, 700, -800, -1])
@@ -251,7 +253,7 @@ def makeModel(teff, logg=5, metal=0, vsini=1, rv=0, tell_alpha=1.0, airmass=1.0,
 	#	model.flux = model_tmp.flux
 
 	# instrumental LSF
-	if instrument.lower() in ['nirspec', 'hires', 'igrins']:
+	if instrument.lower() in ['nirspec', 'hires', 'igrins', 'jwst_nirspec']:
 		model.flux = smart.broaden(wave=model.wave, flux=model.flux, vbroad=lsf, rotate=False, gaussian=True)
 	elif instrument.lower() == 'apogee':
 		model.flux = ap.apogee_hack.spec.lsf.convolve(model.wave, model.flux, lsf=lsf, xlsf=xlsf).flatten()
@@ -284,12 +286,19 @@ def makeModel(teff, logg=5, metal=0, vsini=1, rv=0, tell_alpha=1.0, airmass=1.0,
 			model1.wave = stellar_model.wave
 			model2.wave = stellar_model.wave
 
+
+	#model.flux **= (1 + flux_exponent_offset)
+	model.flux *= 10**flux_mult
+	
+
 	# integral resampling
 	if data is not None:
 
-		if instrument.lower() in ['nirspec', 'hires', 'igrins', 'fire', 'kpic', 'nires']:
+		if instrument.lower() in ['nirspec', 'hires', 'igrins', 'fire', 'kpic', 'nires', 'jwst_nirspec']:
 
 			#print(modelset, np.min(model.wave), np.max(model.wave))
+			#print(np.median(data.wave[1:]-data.wave[:-1]))
+			#print(np.median(model.wave[1:]-model.wave[:-1]))
 
 			model.flux = np.array(smart.integralResample(xh=model.wave, yh=model.flux, xl=data.wave))
 			model.wave = data.wave
@@ -305,16 +314,17 @@ def makeModel(teff, logg=5, metal=0, vsini=1, rv=0, tell_alpha=1.0, airmass=1.0,
 					model1.wave = data.wave
 					model2.flux = np.array(smart.integralResample(xh=model2.wave, yh=model2.flux, xl=data.wave))
 					model2.wave = data.wave
-
-		#plt.figure(41)
-		#plt.plot(model.wave, model.flux, label='model')
-		#plt.plot(data.wave, data.flux, label='data')
-		#plt.legend()
-		#plt.show()
-		#print('6')
+		'''
+		plt.figure(41)
+		plt.plot(model.wave, model.flux, label='model')
+		plt.plot(data.wave, data.flux, label='data')
+		plt.legend()
+		plt.show()
+		print('6')
+		'''
 
 		# contunuum correction
-		if instrument.lower() in ['nirspec', 'hires', 'igrins', 'kpic', 'fire', 'nires']:
+		if instrument.lower() in ['nirspec', 'hires', 'igrins', 'kpic', 'fire', 'nires', 'jwst_nirspec'] and continuum:
 
 			niter = 5 # continuum iteration
 
@@ -342,7 +352,7 @@ def makeModel(teff, logg=5, metal=0, vsini=1, rv=0, tell_alpha=1.0, airmass=1.0,
 					model = smart.continuum(data=data, mdl=model)
 
 
-		elif instrument.lower() == 'apogee':
+		elif instrument.lower() == 'apogee' and continuum:
 
 			## set the order in the continuum fit
 			deg         = 5
@@ -426,6 +436,7 @@ def makeModel(teff, logg=5, metal=0, vsini=1, rv=0, tell_alpha=1.0, airmass=1.0,
 			model.flux  = np.array( list(model2.flux) + list(model1.flux) + list(model0.flux) )
 			model.wave  = np.array( list(model2.wave) + list(model1.wave) + list(model0.wave) )
 
+
 		else: # Any other instrument
 
 			model.flux = np.array(smart.integralResample(xh=model.wave, yh=model.flux, xl=data.wave))
@@ -442,15 +453,15 @@ def makeModel(teff, logg=5, metal=0, vsini=1, rv=0, tell_alpha=1.0, airmass=1.0,
 					model1.wave = data.wave
 					model2.flux = np.array(smart.integralResample(xh=model2.wave, yh=model2.flux, xl=data.wave))
 					model2.wave = data.wave
-
-	#plt.figure(5)
-	#plt.plot(model.wave, model.flux, label='model')
-	#plt.plot(data.wave, data.flux, label='data')
-	#plt.legend()
-	#plt.show()
-	#print('7')
-
-	if instrument.lower() in ['nirspec', 'hires', 'igrins', 'fire', 'nires']:
+	'''
+	plt.figure(5)
+	plt.plot(model.wave, model.flux, label='model')
+	plt.plot(data.wave, data.flux, label='data')
+	plt.legend()
+	plt.show()
+	print('7')
+	'''
+	if instrument.lower() in ['nirspec', 'hires', 'igrins', 'fire', 'nires', 'jwst_nirspec']:
 
 		# flux offset
 		model.flux += flux_offset
@@ -458,9 +469,6 @@ def makeModel(teff, logg=5, metal=0, vsini=1, rv=0, tell_alpha=1.0, airmass=1.0,
 			stellar_model.flux += flux_offset
 			if binary:
 				model2.flux += flux_offset
-	
-	#model.flux **= (1 + flux_exponent_offset)
-	model.flux *= 10**flux_mult
 
 	if output_stellar_model: 
 		stellar_model.flux *= 10**flux_mult
@@ -1022,7 +1030,7 @@ def getLSF(telluric_data, alpha=1.0, continuum=True,test=False,save_path=None):
 	Return a best LSF value from a telluric data.
 	"""
 	lsf_list = []
-	test_lsf = np.arange(3.0,13.0,0.1)
+	test_lsf = np.arange(3.0,60.0,0.1)
 	
 	data = copy.deepcopy(telluric_data)
 	if continuum is True:
@@ -1050,22 +1058,24 @@ def getLSF(telluric_data, alpha=1.0, continuum=True,test=False,save_path=None):
 		lsf_list.append([chisquare,i])
 
 		if test is True:
-			plt.plot(telluric_model.wave,telluric_model.flux+(i-3)*10+1,
-				'r-',alpha=0.5)
+			plt.figure(figsize=(10,6))
+			#plt.plot(telluric_model.wave,telluric_model.flux+(i-3)*10+1,
+			#	'r-',alpha=0.5, label='model')
+			plt.plot(telluric_model.wave,telluric_model.flux,alpha=0.5, label='telluric model')
 
-	if test is True:
-		plt.plot(data.wave,data.flux,
-			'k-',label='telluric data',alpha=0.5)
-		plt.title("Test LSF",fontsize=15)
-		plt.xlabel("Wavelength ($\AA$)",fontsize=12)
-		plt.ylabel("Transmission + Offset",fontsize=12)
-		plt.minorticks_on()
-		if save_path is not None:
-			plt.savefig(save_path+\
-				"/{}_O{}_lsf_data_mdl.png"\
-				.format(data.name, data.order))
-		#plt.show()
-		plt.close()
+			plt.plot(data.wave,data.flux,
+				'k-',label='telluric data',alpha=0.5)
+			plt.title("Test LSF",fontsize=15)
+			plt.xlabel("Wavelength ($\AA$)",fontsize=12)
+			plt.ylabel("Transmission",fontsize=12)
+			plt.minorticks_on()
+			plt.legend()
+			if save_path is not None:
+				plt.savefig(save_path+\
+					"/{}_O{}_{}lsf_data_mdl.png"\
+					.format(data.name, data.order, i))
+			#plt.show()
+			plt.close()
 
 		fig, ax = plt.subplots()
 		for i in range(len(lsf_list)):
