@@ -46,3 +46,10 @@ cal_param_igrins = {
 	'124':{'xcorr_range':1.0, 'outlier_rej':2.5, 	'pixel_range_start':70, 	'pixel_range_end':-40},
 }
 
+cal_param_fire = {
+	'20': {'xcorr_range':80.0, 'outlier_rej':2.5, 	'pixel_range_start':875, 	'pixel_range_end':-1},
+}
+
+cal_param_nires = {
+	'ALL': {'xcorr_range':50.0, 'outlier_rej':2.5, 	'pixel_range_start':0, 	'pixel_range_end':-1},
+}

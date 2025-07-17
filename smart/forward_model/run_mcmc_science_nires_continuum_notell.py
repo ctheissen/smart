@@ -51,14 +51,14 @@ parser.add_argument("date_obs",metavar='dobs',type=str,
 parser.add_argument("sci_data_name",metavar='sci',type=str,
     default=None, help="science data name", nargs="+")
 
-parser.add_argument("tell_data_name",metavar='tell',type=str,
-    default=None, help="telluric data name", nargs="+")
+#parser.add_argument("tell_data_name",metavar='tell',type=str,
+#    default=None, help="telluric data name", nargs="+")
 
 parser.add_argument("data_path",type=str,
     default=None, help="science data path", nargs="+")
 
-parser.add_argument("tell_path",type=str,
-    default=None, help="telluric data path", nargs="+")
+#parser.add_argument("tell_path",type=str,
+#    default=None, help="telluric data path", nargs="+")
 
 parser.add_argument("save_to_path",type=str,
     default=None, help="output path", nargs="+")
@@ -128,8 +128,8 @@ instrument             = str(args.instrument)
 date_obs               = str(args.date_obs[0])
 sci_data_name          = str(args.sci_data_name[0])
 data_path              = str(args.data_path[0])
-tell_data_name         = str(args.tell_data_name[0])
-tell_path              = str(args.tell_path[0])
+#tell_data_name         = str(args.tell_data_name[0])
+#tell_path              = str(args.tell_path[0])
 save_to_path_base      = str(args.save_to_path[0])
 lsf0                   = float(args.lsf[0])
 ndim, nwalkers, step   = int(args.ndim), int(args.nwalkers), int(args.step)
@@ -161,73 +161,35 @@ dt_string = now.strftime("%H:%M:%S")
 #####################################
 
 print('MASK', applymask)
-#print(sci_data_name)
-#print(data_path)
-#print(data_path + sci_data_name + '.fits')
-#print(tell_path)
-#print(tell_data_name)
-#print(tell_path + tell_data_name + '.fits')
+print(sci_data_name)
+print(data_path)
+print(data_path + sci_data_name + '.fits')
 #sys.exit()
 
-spectrum = splat.Spectrum(file=data_path+'%s.fits'%sci_data_name, instrument='NIRES')
+spectrum = splat.Spectrum(file='nires_J1259+0651A_20250516.fits', instrument='NIRES')
+#spectrum = splat.Spectrum(file='nires_J1259+0651B_20250516.fits', instrument='NIRES')
 
-# Read in the telluric with the new wavelength solution
-hdulT    = fits.open(tell_path+'%s.fits'%tell_data_name)
-newWaves = hdulT[1].data
-
-
-#plt.plot(spectrum['wave'], spectrum['spec'], label='data')
-#plt.plot(spectrum['wave'], spectrum['err'], label='err')
-#print(spectrum['spec'])
-#plt.legend()
-#plt.show()
-#sys.exit()
-
-#wave  = spectrum.wave.value * 10000 # convert microns to angstroms
+wave  = spectrum.wave.value * 10000 # convert microns to angstroms
 flux  = spectrum.flux.value  ### NEED TO CONVERT THESE UNITS!
 noise = spectrum.noise.value  ### NEED TO CONVERT THESE UNITS!
 
 mask   = np.where( (np.isnan(flux) ) )[0]
-wave   = newWaves  * u.angstrom
-flux   = flux  * u.erg/u.cm**2/u.micron/u.s #* 1e6 * u.Jy.cgs 
-noise  = noise * u.erg/u.cm**2/u.micron/u.s #* 1e6 * u.Jy.cgs 
-
-print('WAVES:', wave)
-
-# convert to flux density
-#flux  *= speedoflight.cgs / (wave.to(u.m) * wave.to(u.angstrom)) 
-#noise *= speedoflight.cgs / (wave.to(u.m) * wave.to(u.angstrom)) 
+wave   = wave  * u.angstrom
+flux   = flux  * u.erg/u.cm**2/u.micron/u.s 
+noise  = noise * u.erg/u.cm**2/u.micron/u.s 
 
 # Convert to correct units
 flux  = flux.to(u.erg/u.s/u.cm**2/u.angstrom)
 noise = noise.to(u.erg/u.s/u.cm**2/u.angstrom)
 
-'''
-print(wave)
-print(flux)
-print(noise)
-plt.plot(wave, flux)
-plt.show()
-'''
+data          = smart.Spectrum(flux=flux.value, wave=wave.value, noise=noise.value, order=order, instrument=instrument)
+data.wave     = data.wave.flatten()
+data.oriWave  = data.wave.flatten()
+data.flux     = data.flux.flatten()
+data.oriFlux  = data.flux.flatten()
+data.noise    = data.noise.flatten()
+data.oriNoise = data.noise.flatten()
 
-data            = smart.Spectrum(flux=flux.value, wave=wave.value, noise=noise.value, order='None', instrument='None')
-data.order      = order
-data.instrument = instrument
-data.wave       = data.wave.flatten()
-data.oriWave    = data.wave.flatten()
-data.flux       = data.flux.flatten()
-data.oriFlux    = data.flux.flatten()
-data.noise      = data.noise.flatten()
-data.oriNoise   = data.noise.flatten()
-
-#data        = smart.Spectrum(name=sci_data_name, order=order, path=data_path, applymask=applymask, instrument=instrument)
-'''
-import scipy as sp
-smoothfluxmed = sp.ndimage.filters.uniform_filter(data.flux, size=80) # smooth by this many spectral bins
-
-data.flux   /= smoothfluxmed
-data.noise  /= smoothfluxmed
-'''
 sci_data  = data
 
 
@@ -326,7 +288,7 @@ if 'btsettl08' in modelset.lower():
 						'pwv_min':0.5,                            	'pwv_max':20.0,
 						'A_min':-50,							    'A_max':50,
 						'B_min':-50,                              	'B_max':50,
-						'N_min':0.10,                               'N_max':100.0,
+						'N_min':0.10,                               'N_max':10.0,
 						'lsf_min':1,                                'lsf_max':200 				
 					}
 
@@ -381,12 +343,12 @@ elif modelset.lower() == 'phoenix-aces-agss-cond-2011':
 						'logg_min':3.5,                             'logg_max':logg_max,
 						'metal_min':-4,                             'metal_max':1.,
 						'vsini_min':0.0,                            'vsini_max':100.0,
-						'rv_min':-400.0,                            'rv_max':400.0,
+						'rv_min':-200.0,                            'rv_max':200.0,
 						'am_min':1.0,                               'am_max':3.0,
-						'pwv_min':0.5,                            	'pwv_max':20.0,
+						'pwv_min':0.5,                            	'pwv_max':5.0,
 						'A_min':-50,								'A_max':50,
 						'B_min':-0.6,								'B_max':0.6,
-						'N_min':0.10,                               'N_max':20.0, 	
+						'N_min':0.10,                               'N_max':10.0, 	
 						'lsf_min':1,                                'lsf_max':200 				
 					}
 
@@ -401,7 +363,6 @@ if final_mcmc:
 	limits['rv_min'] = priors['rv_min'] - 10
 	limits['rv_max'] = priors['rv_max'] + 10
 
-
 ### mask the end pixels
 data.wave      = data.wave[pixel_start:pixel_end]
 data.flux      = data.flux[pixel_start:pixel_end]
@@ -413,28 +374,13 @@ data.oriNoise  = data.oriNoise[pixel_start:pixel_end]
 ## add a pixel label for plotting
 length1     = len(data.wave)
 pixel       = np.delete(np.arange(length1),custom_mask)
-#pixel       = np.delete(pixel, data.mask)
 print('MASK:', data.mask, len(data.mask))
 print('PIXELS:', pixel_start, pixel_end)
 
 
-
 ## apply a custom mask
 print('CUSTOM_MASK', custom_mask)
-#plt.plot(data.wave, data.flux, alpha=0.5, label='data')
-#plt.plot(np.arange(len(data.wave)), data.flux, alpha=0.5, label='data')
-#print(len(data.flux))
 data.mask_custom(custom_mask=custom_mask)
-#print(len(data.flux))
-#plt.plot(data.wave, data.flux, alpha=0.5, label='data masked')
-#plt.plot(pixel, data.flux, alpha=0.5, label='data masked')
-#plt.legend()
-#plt.show()
-#sys.exit()
-
-#plt.plot(data.wave, data.flux)
-#plt.show()
-#sys.exit()
 
 
 # log file
@@ -467,7 +413,7 @@ def lnlike(theta, data, lsf0):
 
 	## Parameters MCMC
 	#print('THETA:', theta)
-	teff, logg, metal, rv, N, pwv, am, lsf = theta #N noise prefactor
+	teff, logg, metal, rv, N, lsf = theta #N noise prefactor
 	#teff, logg, vsini, rv, , am, pwv, A, B, freq, amp, phase = theta
 	
 	#print('DATA')
@@ -476,9 +422,9 @@ def lnlike(theta, data, lsf0):
 	#print(data.wave.shape)
 	#print(mask)
 	#print('1')
-	model = smart.makeModel(teff=teff, logg=logg, metal=metal, rv=rv,  pwv=pwv, airmass=am, #flux_mult=A, #wave_offset=B, 
+	model = smart.makeModel(teff=teff, logg=logg, metal=metal, rv=rv, #flux_mult=A, #wave_offset=B, 
 		                        lsf=lsf, order=str(data.order), data=data, modelset=modelset,
-		                        include_fringe_model=include_fringe_model, instrument=instrument, tell=True)
+		                        include_fringe_model=include_fringe_model, instrument=instrument, tell=False)
 	#print('2')
 	#print('MODEL')
 	#print(model.wave)
@@ -499,7 +445,7 @@ def lnlike(theta, data, lsf0):
 	#plt.close(1)
 	#chisquare = smart.chisquare(data, model)
 
-	return -0.5 * (chisquare + np.sum(np.log(2*np.pi*(data.noise*N)**2)))
+	return -0.5 * (chisquare + np.sum(np.log(2*np.pi*(data.noise)**2)))
 	
 
 def lnprior(theta, limits=limits):
@@ -507,15 +453,13 @@ def lnprior(theta, limits=limits):
 	Specifies a flat prior
 	"""
 	## Parameters for theta
-	teff, logg, metal, rv, N, pwv, am, lsf = theta
+	teff, logg, metal, rv, N, lsf = theta
 
 	if  limits['teff_min']  < teff  < limits['teff_max'] \
 	and limits['logg_min']  < logg  < limits['logg_max'] \
 	and limits['metal_min'] < metal < limits['metal_max'] \
 	and limits['rv_min']    < rv    < limits['rv_max']   \
 	and limits['N_min']     < N     < limits['N_max'] \
-	and limits['pwv_min']   < pwv   < limits['pwv_max']\
-	and limits['am_min']    < am    < limits['am_max']\
 	and limits['lsf_min']   < lsf   < limits['lsf_max']:
 		return 0.0
 
@@ -538,17 +482,16 @@ pos = [np.array([	priors['teff_min']  + (priors['teff_max']   - priors['teff_min
 					priors['rv_min']    + (priors['rv_max']     - priors['rv_min']   ) * np.random.uniform(), 
 					#priors['A_min']     + (priors['A_max']      - priors['A_min'])     * np.random.uniform(),
 					priors['N_min']     + (priors['N_max']      - priors['N_min'])     * np.random.uniform(),
-					priors['pwv_min']   + (priors['pwv_max']    - priors['pwv_min'])     * np.random.uniform(),
-					priors['am_min']    + (priors['am_max']     - priors['am_min'])     * np.random.uniform(),
 					#priors['B_min']     + (priors['B_max']      - priors['B_min'])     * np.random.uniform(),
 					priors['lsf_min']   + (priors['lsf_max']    - priors['lsf_min'])   * np.random.uniform()
 					]) for i in range(nwalkers)]
 
-## TEST
 
 print('Priors:',priors)
 print('Limits:',limits)
-'''
+
+## single processing
+
 sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, args=(data, lsf0), a=moves, moves=emcee.moves.KDEMove())
 time1 = time.time()
 sampler.run_mcmc(pos, step, progress=True)
@@ -565,7 +508,7 @@ with Pool() as pool:
 	time1 = time.time()
 	sampler.run_mcmc(pos, step, progress=True)
 	time2 = time.time()
-
+'''
 
 np.save(save_to_path + '/sampler_chain', sampler.chain[:, :, :])
 
@@ -592,8 +535,8 @@ ylabels = ["$T_{\mathrm{eff}} (K)$",
            "$RV(km/s)$",
            #"$C_{F_{\lambda}}$ (cnt/s)",
            "$C_\mathrm{Noise}$",
-           "PWV",
-           "AM",
+           #"PWV",
+           #"AM",
            "LSF"
            ]
 
@@ -624,11 +567,11 @@ triangle_samples = sampler_chain[:, burn:, :].reshape((-1, ndim))
 #print(triangle_samples.shape)
 
 # create the final spectra comparison
-teff_mcmc, logg_mcmc, metal_mcmc, rv_mcmc, N_mcmc, pwv_mcmc, am_mcmc, lsf_mcmc = map(lambda v: (v[1], v[2]-v[1], v[1]-v[0]), 
+teff_mcmc, logg_mcmc, metal_mcmc, rv_mcmc, N_mcmc, lsf_mcmc = map(lambda v: (v[1], v[2]-v[1], v[1]-v[0]), 
 	zip(*np.percentile(triangle_samples, [16, 50, 84], axis=0)))
 
 
-#print(teff_mcmc, logg_mcmc, metal_mcmc, rv_mcmc, N_mcmc, lsf_mcmc)
+print(teff_mcmc, logg_mcmc, metal_mcmc, rv_mcmc, N_mcmc, lsf_mcmc)
 
 # add the summary to the txt file
 
@@ -643,8 +586,8 @@ file_log2.write("metal_mcmc {}\n".format(str(metal_mcmc[0])))
 #file_log2.write("vsini_mcmc {}\n".format(str(vsini_mcmc[0])))
 file_log2.write("rv_mcmc {}\n".format(str(rv_mcmc[0]+barycorr)))
 file_log2.write("N_mcmc {}\n".format(str(N_mcmc[0])))
-file_log2.write("pwv_mcmc {}\n".format(str(pwv_mcmc[0])))
-file_log2.write("am_mcmc {}\n".format(str(am_mcmc[0])))
+#file_log2.write("pwv_mcmc {}\n".format(str(pwv_mcmc[0])))
+#file_log2.write("am_mcmc {}\n".format(str(am_mcmc[0])))
 #file_log2.write("A_mcmc {}\n".format(str(A_mcmc[0])))
 #file_log2.write("B_mcmc {}\n".format(str(B_mcmc[0])))
 file_log2.write("lsf_mcmc {}\n".format(str(lsf_mcmc[0])))
@@ -655,8 +598,8 @@ file_log2.write("metal_mcmc_e {}\n".format(str(max(abs(metal_mcmc[1]), abs(metal
 #file_log2.write("vsini_mcmc_e {}\n".format(str(max(abs(vsini_mcmc[1]), abs(vsini_mcmc[2])))))
 file_log2.write("rv_mcmc_e {}\n".format(str(max(abs(rv_mcmc[1]), abs(rv_mcmc[2])))))
 file_log2.write("N_mcmc_e {}\n".format(str(max(abs(N_mcmc[1]), abs(N_mcmc[2])))))
-file_log2.write("pwv_mcmc_e {}\n".format(str(max(abs(pwv_mcmc[1]), abs(pwv_mcmc[2])))))
-file_log2.write("am_mcmc_e {}\n".format(str(max(abs(am_mcmc[1]), abs(am_mcmc[2])))))
+#file_log2.write("pwv_mcmc_e {}\n".format(str(max(abs(pwv_mcmc[1]), abs(pwv_mcmc[2])))))
+#file_log2.write("am_mcmc_e {}\n".format(str(max(abs(am_mcmc[1]), abs(am_mcmc[2])))))
 #file_log2.write("A_mcmc_e {}\n".format(str(max(abs(A_mcmc[1]), abs(A_mcmc[2])))))
 #file_log2.write("B_mcmc_e {}\n".format(str(max(abs(B_mcmc[1]), abs(B_mcmc[2])))))
 file_log2.write("lsf_mcmc_e {}\n".format(str(max(abs(lsf_mcmc[1]), abs(lsf_mcmc[2])))))
@@ -669,8 +612,8 @@ file_log2.write("metal_mcmc_ue {}\n".format(str(abs(metal_mcmc[1]))))
 #file_log2.write("vsini_mcmc_ue {}\n".format(str(abs(vsini_mcmc[1]))))
 file_log2.write("rv_mcmc_ue {}\n".format(str(abs(rv_mcmc[1]))))
 file_log2.write("N_mcmc_ue {}\n".format(str(abs(N_mcmc[1]))))
-file_log2.write("pwv_mcmc_ue {}\n".format(str(abs(pwv_mcmc[1]))))
-file_log2.write("am_mcmc_ue {}\n".format(str(abs(am_mcmc[1]))))
+#file_log2.write("pwv_mcmc_ue {}\n".format(str(abs(pwv_mcmc[1]))))
+#file_log2.write("am_mcmc_ue {}\n".format(str(abs(am_mcmc[1]))))
 #file_log2.write("A_mcmc_ue {}\n".format(str(abs(A_mcmc[1]))))
 #file_log2.write("B_mcmc_ue {}\n".format(str(abs(B_mcmc[1]))))
 file_log2.write("lsf_mcmc_ue {}\n".format(str(abs(lsf_mcmc[1]))))
@@ -682,15 +625,14 @@ file_log2.write("metal_mcmc_le {}\n".format(str(abs(metal_mcmc[2]))))
 #file_log2.write("vsini_mcmc_le {}\n".format(str(abs(vsini_mcmc[2]))))
 file_log2.write("rv_mcmc_le {}\n".format(str(abs(rv_mcmc[2]))))
 file_log2.write("N_mcmc_le {}\n".format(str(abs(N_mcmc[2]))))
-file_log2.write("pwv_mcmc_le {}\n".format(str(abs(pwv_mcmc[2]))))
-file_log2.write("am_mcmc_le {}\n".format(str(abs(am_mcmc[2]))))
+#file_log2.write("pwv_mcmc_le {}\n".format(str(abs(pwv_mcmc[2]))))
+#file_log2.write("am_mcmc_le {}\n".format(str(abs(am_mcmc[2]))))
 #file_log2.write("A_mcmc_le {}\n".format(str(abs(A_mcmc[2]))))
 #file_log2.write("B_mcmc_le {}\n".format(str(abs(B_mcmc[2]))))
 file_log2.write("lsf_mcmc_le {}\n".format(str(abs(lsf_mcmc[2]))))
 file_log2.close()
 
-#print(teff_mcmc, logg_mcmc, vsini_mcmc, rv_mcmc, am_mcmc, pwv_mcmc, A_mcmc, B_mcmc, N_mcmc)
-
+# Correct the walkers for barycentric motion
 triangle_samples[:,3] += barycorr
 
 ## triangular plots
@@ -705,8 +647,8 @@ fig = corner.corner(triangle_samples,
 	rv_mcmc[0]+barycorr, 
 	#A_mcmc[0],
 	N_mcmc[0],
-	pwv_mcmc[0],
-	am_mcmc[0],
+	#pwv_mcmc[0],
+	#am_mcmc[0],
 	lsf_mcmc[0]
 	],
 	quantiles=[0.16, 0.84],
@@ -726,14 +668,14 @@ rv    = rv_mcmc[0]
 #A     = A_mcmc[0]
 #B     = B_mcmc[0]
 N     = N_mcmc[0]
-pwv   = pwv_mcmc[0]
-am    = am_mcmc[0]
+#pwv   = pwv_mcmc[0]
+#am    = am_mcmc[0]
 lsf   = lsf_mcmc[0]
 
 print('Creating model and data plot')
-model, model_notell = model_fit.makeModel(teff=teff, logg=logg, metal=metal, rv=rv, #flux_mult=A,
-	pwv=pwv, airmass=am, lsf=lsf, order=str(data.order), data=data, modelset=modelset, 
-	include_fringe_model=False, instrument=instrument, tell=True, output_stellar_model=True)
+model = model_fit.makeModel(teff=teff, logg=logg, metal=metal, rv=rv, #flux_mult=A,
+	lsf=lsf, order=str(data.order), data=data, modelset=modelset, 
+	include_fringe_model=False, instrument=instrument, tell=False)
 
 
 fig = plt.figure(figsize=(16,6))
@@ -746,7 +688,7 @@ plt.rc('font', family='sans-serif')
 plt.tick_params(labelsize=15)
 diff = data.flux-model.flux
 ax1.plot(model.wave, model.flux, color='C3', linestyle='-', label='model',alpha=0.8)
-ax1.plot(model_notell.wave,model_notell.flux, color='C0', linestyle='-', label='model no telluric',alpha=0.8)
+#ax1.plot(model_notell.wave,model_notell.flux, color='C0', linestyle='-', label='model no telluric',alpha=0.8)
 ax1.plot(data.wave, data.flux,'k-', label='data',alpha=0.5)
 #N=1
 ax3.fill_between(data.wave,-data.noise*N,data.noise*N,facecolor='C0',alpha=0.5)
@@ -817,10 +759,10 @@ file_log.write("logg_mcmc {} dex (cgs)\n".format(str(logg_mcmc)))
 file_log.write("metal_mcmc {} dex\n".format(str(metal_mcmc)))
 #file_log.write("fsed_mcmc {} dex\n".format(str(fsed_mcmc)))
 #file_log.write("vsini_mcmc {} km/s\n".format(str(vsini_mcmc)))
-file_log.write("N_mcmc {}\n".format(str(N_mcmc)))
 file_log.write("rv_mcmc {} km/s\n".format(str(rv_mcmc)))
-file_log.write("am_mcmc {}\n".format(str(am_mcmc)))
-file_log.write("pwv_mcmc {}\n".format(str(pwv_mcmc)))
+file_log.write("N_mcmc {}\n".format(str(N_mcmc)))
+#file_log.write("am_mcmc {}\n".format(str(am_mcmc)))
+#file_log.write("pwv_mcmc {}\n".format(str(pwv_mcmc)))
 #file_log.write("A_mcmc {}\n".format(str(A_mcmc)))
 #file_log.write("B_mcmc {}\n".format(str(B_mcmc)))
 file_log.write("lsf_mcmc {}\n".format(str(lsf_mcmc)))

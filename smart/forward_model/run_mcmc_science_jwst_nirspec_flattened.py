@@ -710,6 +710,9 @@ model = model_fit.makeModel(teff=teff, logg=logg, metal=z, fsed=fsed, rv=rv, flu
 	lsf=lsf, order=str(data.order), data=data, modelset=modelset, 
 	include_fringe_model=False, instrument=instrument, tell=False, smoothbreads=True, mask=mask)
 
+Twrite = Table([model.wave, model.flux], names=['wave','flux'])
+Twrite.write(save_to_path + 'JWST_NIRSpec_model.csv')
+
 
 fig = plt.figure(figsize=(16,6))
 gs  = gridspec.GridSpec(2,1, height_ratios=[3,1])
