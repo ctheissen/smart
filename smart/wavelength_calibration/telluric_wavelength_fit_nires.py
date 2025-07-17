@@ -11,7 +11,7 @@ from scipy.special import wofz
 import time
 import sys
 import smart
-from .cal_param import cal_param_nires
+from .cal_param import cal_param_dict
 
 FULL_PATH  = os.path.realpath(__file__)
 BASE = os.path.split(os.path.split(os.path.split(FULL_PATH)[0])[0])[0]
@@ -1176,11 +1176,11 @@ def run_wave_cal(data_name, data_path, order_list,
 				else:
 					outlier_rej = 3.
 		else:
-			xcorr_range       = cal_param_nires[str(order)]['xcorr_range']
-			pixel_range_start = cal_param_nires[str(order)]['pixel_range_start']
-			pixel_range_end   = cal_param_nires[str(order)]['pixel_range_end']
+			xcorr_range       = cal_param_dict[instrument.lower()][str(order)]['xcorr_range']
+			pixel_range_start = cal_param_dict[instrument.lower()][str(order)]['pixel_range_start']
+			pixel_range_end   = cal_param_dict[instrument.lower()][str(order)]['pixel_range_end']
 			if outlier_rej is None:
-				outlier_rej = cal_param_nires[str(order)]['outlier_rej']
+				outlier_rej = cal_param_dict[instrument.lower()][str(order)]['outlier_rej']
 
 		if outlier_rej is None:
 			outlier_rej = cal_param_dict[str(order)]['outlier_rej']
