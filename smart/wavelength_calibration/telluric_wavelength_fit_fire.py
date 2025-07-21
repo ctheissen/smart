@@ -1317,21 +1317,22 @@ def run_wave_cal(data_name, data_path, order_list,
 		#plt.show()
 		#sys.exit()
 
+		#plt.plot(data.wave, data.flux, 'r-', alpha=0.5, label='median combined mask data')
 		data     = smart.continuumTelluric(data=data, model=model, instrument=instrument)
 		## constant offset correction
 		const    = np.median(data.flux) - np.median(model.flux)
 		data.flux -= const
-
-		#print(len(data.wave),len(data.flux),len(data.noise))
-		#plt.plot(data.wave, data.flux, 'r-', alpha=0.5, label='median combined mask data')
-		#plt.plot(model.wave, model.flux, 'b-', alpha=0.5, label='sky')
-		#plt.xlabel(r'$\lambda$ ($\AA)')
-		#plt.ylabel(r'$F_{\lambda}$')
-		#plt.legend()
-		#plt.show()
-		#plt.close()
-		#sys.exit()
-	
+		'''
+		print(len(data.wave),len(data.flux),len(data.noise))
+		plt.plot(data.wave, data.flux, 'r-', alpha=0.5, label='median combined mask data')
+		plt.plot(model.wave, model.flux, 'b-', alpha=0.5, label='sky')
+		plt.xlabel(r'$\lambda$ ($\AA)')
+		plt.ylabel(r'$F_{\lambda}$')
+		plt.legend()
+		plt.show()
+		plt.close()
+		sys.exit()
+		'''
 		
 		# defringe
 		if order in defringe_list:
@@ -1440,17 +1441,18 @@ def run_wave_cal(data_name, data_path, order_list,
 		telluric_new.flux  = data.oriFlux[pixel]
 		telluric_new.noise = telluric_new.oriNoise[pixel]
 		print(pixel, len(pixel))
-		plt.figure(10111)
-		plt.plot(telluric_new.wave, telluric_new.flux)
-		plt.savefig('test1.png')
+
+		#plt.figure(10111)
+		#plt.plot(telluric_new.wave, telluric_new.flux)
+		#plt.savefig('test1.png')
 		telluric_new       = smart.continuumTelluric(data=telluric_new, model=model, instrument=instrument)
 
-		plt.figure(10112)
-		plt.plot(telluric_new.wave, telluric_new.flux)
-		plt.savefig('test2.png')
-		plt.figure(10113)
-		plt.plot(model.wave, model.flux)
-		plt.savefig('test3.png')
+		#plt.figure(10112)
+		#plt.plot(telluric_new.wave, telluric_new.flux)
+		#plt.savefig('test2.png')
+		#plt.figure(10113)
+		#plt.plot(model.wave, model.flux)
+		#plt.savefig('test3.png')
 		#plt.show()
 
 		# get an estimate for lsf and telluric alpha

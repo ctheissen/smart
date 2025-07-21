@@ -46,11 +46,15 @@ cal_param_dict = {
 		'124':{'xcorr_range':1.0, 'outlier_rej':2.5, 	'pixel_range_start':70, 	'pixel_range_end':-40},
 		},
 	'fire':{
+		'7':  {'xcorr_range':2.0, 'outlier_rej':2.5, 	'pixel_range_start':240, 	'pixel_range_end':-1170},
+		'9':  {'xcorr_range':2.0, 'outlier_rej':2.5, 	'pixel_range_start':260, 	'pixel_range_end':-1010},
+		'14': {'xcorr_range':2.0, 'outlier_rej':2.5, 	'pixel_range_start':80, 	'pixel_range_end':-815},
+		'15': {'xcorr_range':2.0, 'outlier_rej':2.5, 	'pixel_range_start':200, 	'pixel_range_end':-645},
+		'19': {'xcorr_range':10.0, 'outlier_rej':2.5, 	'pixel_range_start':575, 	'pixel_range_end':-50},
 		'20': {'xcorr_range':80.0, 'outlier_rej':2.5, 	'pixel_range_start':875, 	'pixel_range_end':-1},
 	},
 	'nires':{
 		'ALL': {'xcorr_range':50.0, 'outlier_rej':2.5, 	'pixel_range_start':0, 	'pixel_range_end':-1},
-
 	},
 }
 

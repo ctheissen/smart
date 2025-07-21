@@ -2,6 +2,7 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
+import scipy as sp
 import scipy.signal as signal
 from scipy.optimize import curve_fit
 from scipy.interpolate import UnivariateSpline
@@ -319,7 +320,7 @@ def continuumTelluric(data, model=None, instrument='nirspec'):
     #    plt.show()
     #    plt.close()
 
-    if data.order == 35:
+    if data.order == 35 and instrument.lower()=='nirspec':
         # O35 has a voigt absorption profile
         popt, pcov = curve_fit(voigt_profile,data.wave[20:-20],
             data.flux[20:-20],
@@ -338,7 +339,7 @@ def continuumTelluric(data, model=None, instrument='nirspec'):
         data2.noise = data2.noise/voigt_profile(data2.wave, *popt)
         data        = data2
 
-    elif data.order == 38 or data.order == 30:
+    elif (data.order == 38 or data.order == 30) and instrument.lower()=='nirspec':
         # O38 has rich absorption features
         def fit_continuum_O38(x,a,b,**kwargs):
             flux = kwargs.get('flux',data.flux)
@@ -364,7 +365,7 @@ def continuumTelluric(data, model=None, instrument='nirspec'):
         data2.noise /= linear_fit(data2.wave, *popt)
         data         = data2
 
-    elif data.order == 55:
+    elif data.order == 55 and instrument.lower()=='nirspec':
         popt, pcov  = curve_fit(_continuumFit, data.wave, data.flux)
         #if data.applymask:
         #    data.flux   = data.flux/_continuumFit(data.wave, *popt)
@@ -389,7 +390,7 @@ def continuumTelluric(data, model=None, instrument='nirspec'):
 
         data         = data2
 
-    elif data.order == 56:
+    elif data.order == 56 and instrument.lower()=='nirspec':
         # select the highest points to fit a polynomial
         x1 = np.max(data.flux[0:100])
         x2 = np.max(data.flux[100:150])
@@ -416,7 +417,7 @@ def continuumTelluric(data, model=None, instrument='nirspec'):
         data2.noise = data2.noise/_continuumFit(data2.wave,*popt)*0.85
         data        = data2
 
-    elif data.order == 59:
+    elif data.order == 59 and instrument.lower()=='nirspec':
         #wave0 = int(data.wave[np.where(data.flux==np.min(data.flux))])
         popt, pcov = curve_fit(voigt_profile,
             data.wave, data.flux,
@@ -434,7 +435,7 @@ def continuumTelluric(data, model=None, instrument='nirspec'):
         #plt.close()
 
     ## this is not true in general!!
-    elif data.order == 65:
+    elif data.order == 65 and instrument.lower()=='nirspec':
         # O65 is best mateched by a gaussian absorption feature
         popt, pcov  = curve_fit(gaus_absorption_only,
             data.wave,data.flux, p0=[11660,50,2000,2000],maxfev=100000)
@@ -453,12 +454,44 @@ def continuumTelluric(data, model=None, instrument='nirspec'):
         idx = np.isfinite(data.wave) & np.isfinite(data.flux)
         popt, pcov = curve_fit(_continuumFit, data.wave[idx], data.flux[idx])
         const      = np.mean(data.flux/_continuumFit(data.wave, *popt)) - np.mean(model.flux)
+        def _continuumFitFire(x, c6, c5,c4, c3, c2, c1, c0):
+            return np.poly1d([c6, c5, c4, c3, c2, c1, c0])(x)
+        def _continuumFitFire2(fluxes):
+            smoothfluxmed = sp.ndimage.filters.uniform_filter(fluxes, size=200)
+            return smoothfluxmed
+        if instrument.lower() == 'fire':
+            popt, pcov = curve_fit(_continuumFitFire, data.wave[idx], data.flux[idx])
+        #plt.plot(data.wave, data.flux, label='data')
+        #plt.plot(data.wave, _continuumFitFire(data.wave, *popt), label='cont')
+        #plt.plot(data.wave, _continuumFitFire2(data.flux), label='cont')
+        #plt.plot(data.wave, _continuumFitFire(data.wave, *popt) - const, label='cont')
+        #plt.plot(data.wave, data.flux / _continuumFitFire(data.wave, *popt), label='cont')
+        #plt.plot(data.wave, data.flux / _continuumFitFire2(data.flux), label='cont')
+        #plt.legend()
+        #plt.show()
+        #sys.exit()
         if data.order == 57: const = 0
-        data.flux  = data.flux/_continuumFit(data.wave, *popt) - const
-        data.noise = data.noise/_continuumFit(data.wave, *popt)
-        #if not data.applymask:
-        data2.flux  = data2.flux/_continuumFit(data2.wave, *popt) - const
-        data2.noise = data2.noise/_continuumFit(data2.wave, *popt)
-        data        = data2
+        if instrument.lower() == 'fire':
+            
+            data.flux  = data.flux/_continuumFitFire2(data.flux) - const
+            data.noise = data.noise/_continuumFitFire2(data.flux)
+            #if not data.applymask:
+            data2.flux  = data2.flux/_continuumFitFire2(data2.flux) - const
+            data2.noise = data2.noise/_continuumFitFire2(data2.flux)
+            '''
+            data.flux  = data.flux/_continuumFitFire(data.wave, *popt) - const
+            data.noise = data.noise/_continuumFitFire(data.wave, *popt)
+            #if not data.applymask:
+            data2.flux  = data2.flux/_continuumFitFire(data2.wave, *popt) - const
+            data2.noise = data2.noise/_continuumFitFire(data2.wave, *popt)
+            '''
+            data        = data2
+        else:
+            data.flux  = data.flux/_continuumFit(data.wave, *popt) - const
+            data.noise = data.noise/_continuumFit(data.wave, *popt)
+            #if not data.applymask:
+            data2.flux  = data2.flux/_continuumFit(data2.wave, *popt) - const
+            data2.noise = data2.noise/_continuumFit(data2.wave, *popt)
+            data        = data2
 
     return data

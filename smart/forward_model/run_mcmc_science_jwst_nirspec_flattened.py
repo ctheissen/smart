@@ -26,6 +26,7 @@ from datetime import date, datetime
 warnings.filterwarnings("ignore")
 import astropy.units as u
 from astropy.units import cds
+from astropy.table import Table
 cds.enable()
 from astropy.constants import c as speedoflight
 
@@ -413,7 +414,7 @@ print('Instrument:', instrument)
 print('include_fringe_model', include_fringe_model)
 print(lsf0)
 
-def lnlike(theta, data, lsf0):
+def lnlike(theta):
 	"""
 	Log-likelihood, computed from chi-squared.
 
@@ -504,7 +505,7 @@ def lnprior(theta, limits=limits):
 
 	return -np.inf
 
-def lnprob(theta, data, lsf0):
+def lnprob(theta):
 	#print('THETA0:', theta)
 		
 	lnp = lnprior(theta)
@@ -512,7 +513,7 @@ def lnprob(theta, data, lsf0):
 	if not np.isfinite(lnp):
 		return -np.inf
 		
-	return lnp + lnlike(theta, data, lsf0)
+	return lnp + lnlike(theta)
 
 pos = [np.array([	priors['teff_min']  + (priors['teff_max']   - priors['teff_min'] ) * np.random.uniform(), 
 					priors['logg_min']  + (priors['logg_max']   - priors['logg_min'] ) * np.random.uniform(), 
@@ -531,7 +532,7 @@ pos = [np.array([	priors['teff_min']  + (priors['teff_max']   - priors['teff_min
 print('Priors:',priors)
 print('Limits:',limits)
 '''
-sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, args=(data, lsf0), a=moves, moves=emcee.moves.KDEMove())
+sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, a=moves, moves=emcee.moves.KDEMove())
 time1 = time.time()
 sampler.run_mcmc(pos, step, progress=True)
 time2 = time.time()
@@ -541,7 +542,7 @@ time2 = time.time()
 set_start_method('fork')
 with Pool() as pool:
 	#sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, args=(data, lsf, pwv), a=moves, pool=pool)
-	sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, args=(data, lsf0), a=moves, pool=pool,
+	sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, a=moves, pool=pool,
 			moves=emcee.moves.KDEMove())
 	time1 = time.time()
 	sampler.run_mcmc(pos, step, progress=True)
@@ -705,13 +706,20 @@ A     = A_mcmc[0]
 #N     = N_mcmc[0]
 lsf   = lsf_mcmc[0]
 
+print('Best-fit params:', teff, logg, z, fsed, rv, A, lsf)
+
 print('Creating model and data plot')
 model = model_fit.makeModel(teff=teff, logg=logg, metal=z, fsed=fsed, rv=rv, flux_mult=A,
 	lsf=lsf, order=str(data.order), data=data, modelset=modelset, 
 	include_fringe_model=False, instrument=instrument, tell=False, smoothbreads=True, mask=mask)
 
+
+print('SAVING MODEL FILE TO:', save_to_path + '/JWST_NIRSpec_model.csv')
+print("CREATING TABLE")
 Twrite = Table([model.wave, model.flux], names=['wave','flux'])
-Twrite.write(save_to_path + 'JWST_NIRSpec_model.csv')
+print("SAVING TABLE")
+Twrite.write(save_to_path + '/JWST_NIRSpec_model.csv', overwrite=True)
+print("TABLE SAVED")
 
 
 fig = plt.figure(figsize=(16,6))
