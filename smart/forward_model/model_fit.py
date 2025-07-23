@@ -39,6 +39,9 @@ def makeModel(teff, logg=5, metal=0, vsini=1, rv=0, tell_alpha=1.0, airmass=1.0,
 	instrument   = kwargs.get('instrument', 'nirspec')
 	veiling      = kwargs.get('veiling', 0)    # flux veiling parameter
 	lsf          = kwargs.get('lsf', 4.5)   # instrumental LSF
+	kzz          = kwargs.get('kzz', 0)   # kzz parameter
+	fsed         = kwargs.get('fsed', 20)   # fsed parameter
+	co           = kwargs.get('co', 1)   # kzz parameter
 	flux_mult    = kwargs.get('flux_mult', 0)   # flux multiplier
 	continuum    = kwargs.get('continuum', True)   # continuum correct the spectrum
 	smooth       = kwargs.get('smooth', False)   # smooth the spectrum
@@ -47,16 +50,14 @@ def makeModel(teff, logg=5, metal=0, vsini=1, rv=0, tell_alpha=1.0, airmass=1.0,
 	fringe_mcmc  =  kwargs.get('fringe_mcmc', False)
 	piece_wise_fringe_model_list = kwargs.get('piece_wise_fringe_model_list', [0, 700, -800, -1])
 	slow_rotation_broaden = kwargs.get('slow_rotation_broaden', False)
+	mask         = kwargs.get('mask', False) # if the data is masked, apply the same mask to the model
 
 	#print(instrument, order)
 
 	if instrument.lower() == 'kpic': 
-
 		instrument = 'nirspec' # same instrument
 
-
 	if instrument.lower() == 'apogee':
-
 		try:
 			import apogee_tools as ap
 		except ImportError:
@@ -102,22 +103,17 @@ def makeModel(teff, logg=5, metal=0, vsini=1, rv=0, tell_alpha=1.0, airmass=1.0,
 	data       = kwargs.get('data', None) # for continuum correction and resampling
 
 	output_stellar_model = kwargs.get('output_stellar_model', False)
-
-	#print('1')
 	
 	if data is not None and instrument.lower() in ['nirspec', 'hires', 'igrins']:
 		
 		order = data.order
 		# read in a model
-		#print('teff ',teff,'logg ',logg, 'z', z, 'order', order, 'modelset', modelset)
-		#print('teff ',type(teff),'logg ',type(logg), 'z', type(z), 'order', type(order), 'modelset', type(modelset))
 		model    = smart.Model(teff=teff, logg=logg, metal=metal, order=str(order), modelset=modelset, instrument=instrument)
 
-	#elif data is not None and instrument == 'apogee':
 	elif instrument.lower() == 'apogee':
 		
 		# not z; this should be keyword "metal"
-		if modelset == 'sonora':
+		if modelset.lower() == 'sonora':
 			model    = smart.Model(teff=teff, logg=logg, metal=0.0, order='ALL', modelset=modelset, instrument=instrument)
 		else:
 			model    = smart.Model(teff=teff, logg=logg, metal=metal, order='ALL', modelset=modelset, instrument=instrument)
@@ -140,7 +136,7 @@ def makeModel(teff, logg=5, metal=0, vsini=1, rv=0, tell_alpha=1.0, airmass=1.0,
 	else: # see if we have a model anyway
 		
 		try:
-			model    = smart.Model(teff=teff, logg=logg, metal=metal, order=str(order), modelset=modelset, instrument=instrument)
+			model    = smart.Model(teff=teff, logg=logg, metal=metal, kzz=kzz, fsed=fsed, co=co, order=str(order), modelset=modelset, instrument=instrument)
 		except:
 			raise Exception('No Model Available for %s'%instrument)
 			
@@ -437,7 +433,7 @@ def makeModel(teff, logg=5, metal=0, vsini=1, rv=0, tell_alpha=1.0, airmass=1.0,
 			model.wave  = np.array( list(model2.wave) + list(model1.wave) + list(model0.wave) )
 
 
-		else: # Any other instrument
+		elif continuum: # Any other instrument
 
 			model.flux = np.array(smart.integralResample(xh=model.wave, yh=model.flux, xl=data.wave))
 			model.wave = data.wave
@@ -461,6 +457,148 @@ def makeModel(teff, logg=5, metal=0, vsini=1, rv=0, tell_alpha=1.0, airmass=1.0,
 	plt.show()
 	print('7')
 	'''
+
+
+	if smooth:
+		
+		smoothfluxmed = sp.ndimage.filters.uniform_filter(model.flux, size=80) # smooth by this many spectral bins
+		model.flux   -= smoothfluxmed # Subtract out the continuum
+		#model.flux   /= smoothfluxmed # Divide out the continuum
+		'''
+		import scipy.signal as signal
+		def butter_highpass(cutoff, fs, btype, order=5):
+		    nyq = 0.5 * fs
+		    normal_cutoff = cutoff / nyq
+		    b, a = signal.butter(order, normal_cutoff, btype=btype, analog=False)
+		    return b, a
+
+		def butter_highpass_filter(data, cutoff, fs, btype, order=5):
+		    b, a = butter_highpass(cutoff, fs, btype, order=order)
+		    y = signal.filtfilt(b, a, data)
+		    return y
+
+
+		cutoff = 10e-3
+		fs = 2
+		# saavif, saavipsd = signal.welch(model.flux, fs, nperseg=2**12)
+		# plt.loglog(saavif, saavipsd)
+
+		model.flux = butter_highpass_filter(model.flux, cutoff, fs, ‘high’, order=5)	
+		# saavif, saavipsd = signal.welch(model.flux, fs, nperseg=2**12)
+		# plt.loglog(saavif, saavipsd)
+		# plt.plot(model.flux)
+		# plt.show()
+		'''
+
+
+	if smoothbreads:
+
+		from scipy.interpolate import InterpolatedUnivariateSpline
+		from scipy.interpolate import interp1d
+		from scipy.optimize import lsq_linear
+
+		def get_spline_model(x_knots, x_samples, spline_degree=3):
+		    """ Compute a spline based linear model.
+		    If Y = [y1, y2, ...] are the values of the function at the location of the node [x1,x2,...].
+		    np.dot(M,Y) is the interpolated spline corresponding to the sampling of the x-axis (x_samples)
+
+
+		    Args:
+		        x_knots: List of nodes for the spline interpolation as np.ndarray in the same units as x_samples.
+		            x_knots can also be a list of ndarrays/list to model discontinous functions.
+		        x_samples: Vector of x values. ie, the sampling of the data.
+		        spline_degree: Degree of the spline interpolation (default: 3).
+		            if np.size(x_knots) <= spline_degree, then spline_degree = np.size(x_knots)-1
+
+		    Returns:
+		        M: Matrix of size (D,N) with D the size of x_samples and N the total number of nodes.
+		    """
+		    if type(x_knots[0]) is list or type(x_knots[0]) is np.ndarray:
+		        x_knots_list = x_knots
+		    else:
+		        x_knots_list = [x_knots]
+
+		    if np.size(x_knots_list) <= 1:
+		        return np.ones((np.size(x_samples),1))
+		    if np.size(x_knots_list) <= spline_degree:
+		        spline_degree = np.size(x_knots)-1
+
+		    M_list = []
+		    for nodes in x_knots_list:
+		        M = np.zeros((np.size(x_samples), np.size(nodes)))
+		        min,max = np.min(nodes),np.max(nodes)
+		        inbounds = np.where((min<x_samples)&(x_samples<max))
+		        _x = x_samples[inbounds]
+
+		        for chunk in range(np.size(nodes)):
+		            tmp_y_vec = np.zeros(np.size(nodes))
+		            tmp_y_vec[chunk] = 1
+		            spl = InterpolatedUnivariateSpline(nodes, tmp_y_vec, k=spline_degree, ext=0)
+		            M[inbounds[0], chunk] = spl(_x)
+		        M_list.append(M)
+		    return np.concatenate(M_list, axis=1)
+
+		def filter_spec_with_spline(wvs, spec,specerr=None,x_nodes=None,M_spline=None):
+		    """
+
+		    Parameters
+		    ----------
+		    wvs
+		    spec
+		    specerr
+		    x_nodes
+		    m_spline
+
+		    Returns
+		    -------
+
+		    """
+		    if specerr is None:
+		        specerr = np.ones(spec.shape)
+
+		    if M_spline is None:
+		        M_spline = get_spline_model(x_nodes, wvs, spline_degree=3)
+
+		    M = M_spline/specerr[:,None]
+		    d = spec/specerr
+		    where_finite = np.where(np.isfinite(d))
+		    M = M[where_finite[0],:]
+		    d = d[where_finite]
+
+		    paras = lsq_linear(M,d).x
+		    m = np.dot(M, paras)
+		    r = d - m
+
+		    LPF_spec = np.zeros(spec.shape)+np.nan
+		    HPF_spec = np.zeros(spec.shape)+np.nan
+		    LPF_spec[where_finite] = m*specerr[where_finite]
+		    HPF_spec[where_finite] = r*specerr[where_finite]
+
+		    return HPF_spec,LPF_spec
+
+
+		### Flatten a spectrum
+		wv_nodes_dict = np.load('nonuniform_nodes.npy',allow_pickle=True).item()
+		wv_nodes_dict['all'] = np.concatenate([wv_nodes_dict['nrs1'][:-1],wv_nodes_dict['nrs2'][1:]])
+		wv_nodes_dict['divs'] = wv_nodes_dict['all'][np.where(abs(np.diff(np.diff(wv_nodes_dict['all'])))>0.009)[0]+1]
+		wv_nodes_dict['divs'] = np.concatenate([wv_nodes_dict['divs'][:3],[4.08],wv_nodes_dict['divs'][3:]])
+
+
+		hpf,_      = filter_spec_with_spline(model.wave/1e4, model.flux, x_nodes=wv_nodes_dict['all'])
+		model.flux = hpf 
+
+
+
+	# apply the mask
+	if mask is not False:
+
+		model.mask  = mask
+		#model.wave  = np.delete(model.wave, list(mask))
+		#model.flux  = np.delete(model.flux, list(mask))
+		model.wave[mask]  = np.nan
+		model.flux[mask]  = np.nan
+
+
 	if instrument.lower() in ['nirspec', 'hires', 'igrins', 'fire', 'nires', 'jwst_nirspec']:
 
 		# flux offset

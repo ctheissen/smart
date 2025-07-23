@@ -442,7 +442,8 @@ def lnlike(theta):
 	#print(mask)
 
 	model = model_fit.makeModel(teff=teff, logg=logg, metal=metal, fsed=fsed, rv=rv, flux_mult=A, #wave_offset=B, 
-		lsf=lsf, order=str(data.order), data=data, modelset=modelset, include_fringe_model=include_fringe_model, instrument=instrument, tell=False, smoothbreads=True, mask=mask)
+		lsf=lsf, order=str(data.order), data=data, modelset=modelset, include_fringe_model=include_fringe_model, 
+		instrument=instrument, tell=False, smoothbreads=True, mask=mask, continuum=False)
 	
 	#print('MODEL')
 	#print(model.wave)
@@ -469,7 +470,7 @@ def lnlike(theta):
 	
 	'''
 	fig = plt.figure(1, figsize=(28,10))
-	plt.suptitle('%0.1f %0.3f %0.3f %0.3f %0.3f %0.3f %0.3f'%(teff, logg, rv, A, B, N, lsf))
+	plt.suptitle('%0.1f %0.3f %0.3f %0.3f %0.3f'%(teff, logg, rv, A, lsf))
 	ax1 = fig.add_subplot(211)
 	ax2 = fig.add_subplot(212)
 	ax1.plot(data.wave, data.flux, label='data', alpha=0.5)
@@ -485,6 +486,7 @@ def lnlike(theta):
 	#chi0 = -0.5 * np.sum( ( data.flux - model.flux )**2/(data.noise*N)**2 + np.log( (data.noise*N)**2) ) 
 
 	#return chisquare #chi0 #-0.5 * (chisquare + np.sum(np.log(2*np.pi*(data.noise)**2)))
+	#print('RETURN:', -0.5 * (covchi2 + np.nansum(np.log(2*np.pi*(data_err_total)**2)) ))
 	return -0.5 * (covchi2 + np.nansum(np.log(2*np.pi*(data_err_total)**2)) )
 
 def lnprior(theta, limits=limits):
