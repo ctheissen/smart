@@ -713,7 +713,7 @@ print('Best-fit params:', teff, logg, z, fsed, rv, A, lsf)
 print('Creating model and data plot')
 model = model_fit.makeModel(teff=teff, logg=logg, metal=z, fsed=fsed, rv=rv, flux_mult=A,
 	lsf=lsf, order=str(data.order), data=data, modelset=modelset, 
-	include_fringe_model=False, instrument=instrument, tell=False, smoothbreads=True, mask=mask)
+	include_fringe_model=False, instrument=instrument, tell=False, smoothbreads=True, mask=mask, continuum=False)
 
 
 print('SAVING MODEL FILE TO:', save_to_path + '/JWST_NIRSpec_model.csv')
