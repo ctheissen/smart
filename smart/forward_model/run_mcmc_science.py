@@ -156,24 +156,24 @@ dt_string = now.strftime("%H:%M:%S")
 
 data        = smart.Spectrum(name=sci_data_name, order=order, path=data_path, apply_sigma_mask=apply_sigma_mask, instrument=instrument)
 
-if instrument != 'hires':
+if instrument.lower() != 'hires':
 	tell_data_name2 = tell_data_name + '_calibrated'
 	tell_sp     = smart.Spectrum(name=tell_data_name2, order=data.order, path=tell_path, apply_sigma_mask=apply_sigma_mask, instrument=instrument)
 
 	# TBD if the improved wavecal for KPIC data is possible
-	if instrument != 'kpic':
+	if instrument.lower() != 'kpic':
 		data.updateWaveSol(tell_sp)
 
 # MJD for logging
 # upgraded NIRSPEC
-if instrument in ['nirspec', 'kpic']:
+if instrument.lower() in ['nirspec', 'kpic']:
 	if len(data.oriWave) == 2048:
 		mjd = data.header['MJD']
 	# old NIRSPEC
 	else:
 		mjd = data.header['MJD-OBS']
 
-elif instrument == 'hires':
+elif instrument.lower() == 'hires':
 	mjd = data.header['MJD']
 
 if coadd:
@@ -271,10 +271,10 @@ else:
 
 data          = copy.deepcopy(sci_data)
 
-if instrument != 'hires':
+if instrument.lower() != 'hires':
 	tell_sp       = copy.deepcopy(tell_data)
 	
-	if instrument != 'kpic':
+	if instrument.lower() != 'kpic':
 		data.updateWaveSol(tell_sp)
 
 # barycentric corrction
@@ -283,7 +283,7 @@ if instrument != 'hires':
 
 ## read the input custom mask and priors
 lines          = open(save_to_path+'/mcmc_parameters.txt').read().splitlines()
-if instrument in ['nirspec', 'kpic']:
+if instrument.lower() in ['nirspec', 'kpic']:
 	custom_mask    = json.loads(lines[5].split('custom_mask')[1])
 	priors         = ast.literal_eval(lines[6].split('priors ')[1])
 	if include_fringe_model:
@@ -292,7 +292,7 @@ if instrument in ['nirspec', 'kpic']:
 		print('fringe_param', fringe_param)
 	else:
 		barycorr       = json.loads(lines[13].split('barycorr')[1])
-elif instrument == 'hires':
+elif instrument.lower() == 'hires':
 	custom_mask    = json.loads(lines[3].split('custom_mask')[1])
 	priors         = ast.literal_eval(lines[4].split('priors ')[1])
 	barycorr       = json.loads(lines[11].split('barycorr')[1])
@@ -318,7 +318,7 @@ if include_fringe_model:
 
 
 # no logg 5.5 for teff lower than 900
-if modelset == 'btsettl08' and priors['teff_min'] < 900: logg_max = 5.0
+if 'btsettl08' in modelset.lower() and priors['teff_min'] < 900: logg_max = 5.0
 else: logg_max = 5.5
 
 ## apply a custom mask
@@ -328,7 +328,7 @@ data.mask_custom(custom_mask=custom_mask)
 A_const       = 0.05 * abs(np.median(data.flux))
 
 # KPIC DRP has underestimated noise (no read/dark current noise)
-if instrument == 'kpic':
+if instrument.lower() == 'kpic':
 	N_max = 20.0
 else:
 	N_max = 20.0
@@ -472,8 +472,10 @@ def lnlike(theta, data, lsf):
 	"""
 
 	## Parameters MCMC
+	#print(theta)
 	teff, logg, vsini, rv, am, pwv, A, B, N = theta #N noise prefactor
 	#teff, logg, vsini, rv, , am, pwv, A, B, freq, amp, phase = theta
+	#print('%s,%s,%s,%s,%s,%s,%s,%s,%s'%(teff, logg, vsini, rv, am, pwv, A, B, N))
 
 	if include_fringe_model:
 		model = model_fit.makeModel(teff=teff, logg=logg, metal=0.0, vsini=vsini, rv=rv, tell_alpha=1.0, wave_offset=B, flux_offset=A,

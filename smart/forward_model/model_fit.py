@@ -143,6 +143,8 @@ def makeModel(teff, logg=5, metal=0, vsini=1, rv=0, tell_alpha=1.0, airmass=1.0,
 	# wavelength offset
 	#model.wave += wave_offset
 
+	#print(modelset, np.min(model.wave), np.max(model.wave))
+
 	#plt.figure(1)
 	#plt.plot(model.wave, model.flux, label='model')
 	#plt.plot(data.wave, data.flux, label='data')
@@ -1163,12 +1165,14 @@ def getLSF2(telluric_data, continuum=True, test=False, save_path=None):
 
 	return popt[0]
 
-def getLSF(telluric_data, alpha=1.0, continuum=True,test=False,save_path=None):
+def getLSF(telluric_data, alpha=1.0, continuum=True, test=False, save_path=None, instrument=None):
 	"""
 	Return a best LSF value from a telluric data.
 	"""
 	lsf_list = []
-	test_lsf = np.arange(3.0,60.0,0.1)
+	test_lsf = np.arange(3.0, 13.0, 0.1)
+	if instrument.lower() in ['nirspec', 'kpic']: 
+		test_lsf = np.arange(3.0, 13.0,0.1)
 	
 	data = copy.deepcopy(telluric_data)
 	if continuum is True:

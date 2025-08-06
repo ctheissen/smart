@@ -1,7 +1,7 @@
 import matplotlib
-matplotlib.use('Agg')
+#matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-plt.ioff()
+#plt.ioff()
 import matplotlib.gridspec as gridspec
 import pandas as pd
 import numpy as np
@@ -40,6 +40,9 @@ parser.add_argument("tell_path",type=str,
 
 parser.add_argument("save_to_path",type=str,
     default=None, help="output path", nargs="+")
+
+parser.add_argument("-instrument",metavar='--inst',type=str,
+    default='nirspec', help="spectrometer name of the instrument; default nirspec")
 
 parser.add_argument("-ndim",type=int,
     default=5, help="number of dimension; default 5")
@@ -81,6 +84,7 @@ args = parser.parse_args()
 
 
 order                  = int(args.order[0])
+instrument             = str(args.instrument)
 date_obs               = str(args.date_obs[0])
 tell_data_name         = str(args.tell_data_name[0])
 tell_path              = str(args.tell_path[0])
@@ -101,7 +105,7 @@ custom_mask            = json.loads(lines[3].split('custom_mask')[1])
 if order == 35: applymask = True
 
 tell_data_name2 = tell_data_name + '_calibrated'
-tell_sp         = smart.Spectrum(name=tell_data_name2, order=order, path=tell_path, applymask=applymask)
+tell_sp         = smart.Spectrum(name=tell_data_name2, order=order, path=tell_path, applymask=applymask, instrument=instrument)
 
 # MJD for logging
 # upgraded NIRSPEC
@@ -223,11 +227,11 @@ if priors is None:
 	#pwv_min_index = np.where(pwv_chi2_array == np.min(pwv_chi2_array))[0][0]
 	#pwv_0         = pwv_list[pwv_min_index]
 
-	priors      =	{	'lsf_min':3.0  		,  'lsf_max':8.0,
+	priors      =	{	'lsf_min':3.0  		,  'lsf_max':10.0,
 						'airmass_min':1.0   ,  'airmass_max':3.0,		
-						'pwv_min':0.5       ,	'pwv_max':20.0,
-						'A_min':-0.1 		,  'A_max':0.1,
-						'B_min':-0.04  	    ,  'B_max':0.04    
+						'pwv_min':0.5       ,  'pwv_max':20.0,
+						'A_min':-0.5 		,  'A_max':0.5,
+						'B_min':-0.5  	    ,  'B_max':0.5      
 					}
 
 
@@ -317,13 +321,21 @@ def lnlike(theta, data=data):
 	lsf, airmass, pwv, A, B = theta
 
 	if include_fringe_model:
-		model = tellurics.makeTelluricModel(lsf, airmass, pwv, A, B, data=data, deg=2, niter=niter, include_fringe_model=include_fringe_model,
+		model = tellurics.makeTelluricModel(lsf, airmass, pwv, A, B, data=data, deg=1, niter=niter, include_fringe_model=include_fringe_model,
 			A1=A1, A2=A2, A3=A3, Dos1=Dos1, Dos2=Dos2, Dos3=Dos3, R1=R1, R2=R2, R3=R3, phi1=phi1, phi2=phi2, phi3=phi3)
 	else:
-		model = tellurics.makeTelluricModel(lsf, airmass, pwv, A, B, data=data, deg=2, niter=niter)
+		model = tellurics.makeTelluricModel(lsf, airmass, pwv, A, B, data=data, deg=1, niter=niter)
 
 	chisquare = smart.chisquare(data, model)
-
+	'''
+	print(-0.5 * (chisquare + np.sum(np.log(2*np.pi*data.noise**2))))
+	plt.figure(1)
+	plt.plot(data.wave, data.flux, label='data')
+	plt.plot(model.wave, model.flux, label='model')
+	#plt.show()
+	plt.pause(0.2)
+	plt.close()
+	'''
 	return -0.5 * (chisquare + np.sum(np.log(2*np.pi*data.noise**2)))
 
 def lnprior(theta):
@@ -363,6 +375,12 @@ pos = [np.array([priors['lsf_min']       + (priors['lsf_max']        - priors['l
 				 priors['B_min']         + (priors['B_max']          - priors['B_min'])     * np.random.uniform()]) for i in range(nwalkers)]
 
 if True:
+	'''
+	sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, args=(data,), a=moves, moves=emcee.moves.KDEMove())
+	time1 = time.time()
+	sampler.run_mcmc(pos, step, progress=True)
+	time2 = time.time()
+	'''
 	set_start_method('fork')
 	with Pool() as pool:
 		sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, args=(data,), a=moves, pool=pool, moves=emcee.moves.KDEMove())
@@ -426,11 +444,11 @@ file_log.close()
 
 print(lsf_mcmc, airmass_mcmc, pwv_mcmc, A_mcmc, B_mcmc)
 
-lsf = lsf_mcmc[0]
+lsf     = lsf_mcmc[0]
 airmass = airmass_mcmc[0]
-pwv = pwv_mcmc[0]
-A = A_mcmc[0]
-B = B_mcmc[0]
+pwv     = pwv_mcmc[0]
+A       = A_mcmc[0]
+B       = B_mcmc[0]
 
 if '_' in tell_sp.name:
 	tell_data_name = tell_sp.name.split('_')[0]
@@ -454,26 +472,26 @@ plt.close()
 data2               = copy.deepcopy(data)
 data2.wave          = data2.wave + B_mcmc[0]
 telluric_model      = tellurics.convolveTelluric(lsf_mcmc[0], airmass_mcmc[0], pwv_mcmc[0], data)
-model, pcont        = smart.continuum(data=data, mdl=telluric_model, deg=2, tell=True)
+model, pcont        = smart.continuum(data=data, mdl=telluric_model, deg=1, tell=True)
 plot_cont           = np.polyval(pcont, model.wave)
 if niter is not None:
 	for i in range(niter):
-		model, pcont2 = smart.continuum(data=data2, mdl=model, deg=2, tell=True)
+		model, pcont2 = smart.continuum(data=data2, mdl=model, deg=1, tell=True)
 		plot_cont *= np.polyval(pcont2, model.wave)
 model.flux         += A_mcmc[0]
 
-lsf = lsf_mcmc[0]
+lsf     = lsf_mcmc[0]
 airmass = airmass_mcmc[0]
-pwv = pwv_mcmc[0]
-A = A_mcmc[0]
-B = B_mcmc[0]
+pwv     = pwv_mcmc[0]
+A       = A_mcmc[0]
+B       = B_mcmc[0]
 
 if include_fringe_model:
 	model_nofringe = model
-	model = tellurics.makeTelluricModel(lsf, airmass, pwv, A, B, data=data2, deg=2, niter=niter, include_fringe_model=include_fringe_model,
+	model = tellurics.makeTelluricModel(lsf, airmass, pwv, A, B, data=data2, deg=1, niter=niter, include_fringe_model=include_fringe_model,
 		A1=A1, A2=A2, A3=A3, Dos1=Dos1, Dos2=Dos2, Dos3=Dos3, R1=R1, R2=R2, R3=R3, phi1=phi1, phi2=phi2, phi3=phi3)
 else:
-	model = tellurics.makeTelluricModel(lsf, airmass, pwv, A, B, data=data2, deg=2, niter=niter)
+	model = tellurics.makeTelluricModel(lsf, airmass, pwv, A, B, data=data2, deg=1, niter=niter)
 
 plt.tick_params(labelsize=20)
 fig = plt.figure(figsize=(20,8))

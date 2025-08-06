@@ -51,7 +51,7 @@ class Spectrum():
 	def __init__(self, **kwargs):
 		self.instrument = kwargs.get('instrument',None)
 		self.order      = kwargs.get('order',None)
-		print(self.instrument)
+		print(self.instrument, self.order)
 
 		if self.instrument == None and self.order == None: 
 			self.name      = kwargs.get('name')

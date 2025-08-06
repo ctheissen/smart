@@ -1219,7 +1219,7 @@ def wavelengthSolutionFit(data, model, order, **kwargs):
 
 
 def run_wave_cal(data_name, data_path, order_list,
-	             save_to_path, test=False, save=False, plot_masked=False,
+	             save_to_path, test=False, save=False, plot_masked=False, instrument=None,
 	             window_width=40, window_step=5, mask_custom=[], apply_sigma_mask=False, apply_edge_mask=False, pwv='1.5',
 	             xcorr_step=0.05, niter=20, outlier_rej=None, defringe_list=[62], cal_param=None):
 	"""
@@ -1275,7 +1275,8 @@ def run_wave_cal(data_name, data_path, order_list,
 		os.chdir(directory)
 
 		# use median value to replace the masked values later
-		data     = smart.Spectrum(name=data_name, order=order, path=data_path, apply_sigma_mask=apply_sigma_mask)
+		data     = smart.Spectrum(name=data_name, order=order, path=data_path, 
+			                      apply_sigma_mask=apply_sigma_mask, instrument=instrument)
 		length1  = len(data.oriWave) # preserve the length of the array
 
 		# the telluric standard model
@@ -1512,7 +1513,7 @@ def run_wave_cal(data_name, data_path, order_list,
 
 		# get an estimate for lsf and telluric alpha
 		#if apply_sigma_mask:
-		lsf   = smart.getLSF(telluric_new, continuum=False)
+		lsf   = smart.getLSF(telluric_new, continuum=False, instrument=instrument)
 		#else:
 		#	lsf   = smart.getLSF(telluric_new)#, continuum=False)
 		#lsf   = smart.getLSF2(telluric_new)#, continuum=False)

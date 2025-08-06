@@ -166,7 +166,7 @@ print(data_path)
 print(data_path + sci_data_name + '.fits')
 #sys.exit()
 
-spectrum = splat.Spectrum(file='2MASS_J13550323-8258375_FIRE_ECH_obs170611_JG_red170614_JG.fits', instrument='FIRE')
+spectrum = splat.Spectrum(file=data_path + sci_data_name + '.fits', instrument='FIRE')
 
 wave  = spectrum.wave.value # convert microns to angstroms
 flux  = spectrum.flux.value  ### NEED TO CONVERT THESE UNITS!
