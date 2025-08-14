@@ -51,6 +51,7 @@ cal_param_dict = {
 	'fire':{
 		'7':  {'xcorr_range':2.0, 'outlier_rej':2.5, 	'pixel_range_start':240, 	'pixel_range_end':-1170},
 		'9':  {'xcorr_range':2.0, 'outlier_rej':2.5, 	'pixel_range_start':260, 	'pixel_range_end':-1010},
+		'11': {'xcorr_range':2.0, 'outlier_rej':2.5, 	'pixel_range_start':30, 	'pixel_range_end':-1070},
 		'14': {'xcorr_range':2.0, 'outlier_rej':2.5, 	'pixel_range_start':80, 	'pixel_range_end':-815},
 		'15': {'xcorr_range':2.0, 'outlier_rej':2.5, 	'pixel_range_start':200, 	'pixel_range_end':-645},
 		'19': {'xcorr_range':10.0, 'outlier_rej':2.5, 	'pixel_range_start':575, 	'pixel_range_end':-50},
