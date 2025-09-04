@@ -41,7 +41,7 @@ def makeModel(teff, logg=5, metal=0, vsini=1, rv=0, tell_alpha=1.0, airmass=1.0,
 	lsf          = kwargs.get('lsf', 4.5)   # instrumental LSF
 	kzz          = kwargs.get('kzz', 0)   # kzz parameter
 	fsed         = kwargs.get('fsed', 20)   # fsed parameter
-	co           = kwargs.get('co', 1)   # kzz parameter
+	co           = kwargs.get('co', 1)   # co parameter
 	flux_mult    = kwargs.get('flux_mult', 0)   # flux multiplier
 	continuum    = kwargs.get('continuum', True)   # continuum correct the spectrum
 	smooth       = kwargs.get('smooth', False)   # smooth the spectrum

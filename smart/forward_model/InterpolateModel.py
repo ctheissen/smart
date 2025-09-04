@@ -67,7 +67,7 @@ def InterpModel(teff, logg=4, metal=0, alpha=0, kzz=0, co=0, fsed=20, modelset='
                 else:
                     filename = '%s'%smart.ModelSets[modelset.lower()] + '_t{0:03d}'.format(int(temp.data[0])) + '_g{0:.2f}'.format(float(logg)) + '_FeH0.00_Y0.28_CO1.00' + '_%s-%s.fits'%(instrument.upper(), order.upper())
         
-        elif modelset.lower() == 'sonora-2023':
+        elif modelset.lower() in ['sonora-2023', 'hd13724b_g395h']:
             if instrument.lower() == 'nirspec':
                 filename = '%s'%smart.ModelSets[modelset.lower()] + '_t{0:03d}'.format(int(temp.data[0])) + '_g{0:.2f}'.format(float(logg)) + '_z{0:.2f}'.format(float(metal)) + '_CO{0:.2f}'.format(float(co)) + '_kzz{0:.2f}'.format(float(kzz)) + '_%s-O%s.fits'%(instrument.upper(), order.upper())
             else:
@@ -108,7 +108,7 @@ def InterpModel(teff, logg=4, metal=0, alpha=0, kzz=0, co=0, fsed=20, modelset='
     ###################################################################################
 
     # Check if the model already exists (grid point)
-    if modelset.lower() == 'sonora-2023':
+    if modelset.lower() in ['sonora-2023', 'hd13724b_g395h']:
         if (teff, logg, metal, kzz, co) in zip(T1['teff'], T1['logg'], T1['M_H'], T1['kzz'], T1['CO']):
             index0 = np.where( (T1['teff'] == teff) & (T1['logg'] == logg) & (T1['M_H'] == metal) & (T1['kzz'] == kzz) & (T1['CO'] == co) )
             #flux2  = GetModel(T1['teff'][index0], T1['logg'][index0], T1['M_H'][index0], modelset=modelset )
@@ -157,7 +157,7 @@ def InterpModel(teff, logg=4, metal=0, alpha=0, kzz=0, co=0, fsed=20, modelset='
 
     try:
 
-        if modelset.lower() == 'sonora-2023':
+        if modelset.lower() in ['sonora-2023', 'hd13724b_g395h']:
 
             #metal, alpha = 0, 0.28
             # Get the nearest models to the gridpoint (teff)
@@ -324,7 +324,7 @@ def InterpModel(teff, logg=4, metal=0, alpha=0, kzz=0, co=0, fsed=20, modelset='
 
 
     
-    if  modelset.lower() == 'sonora-2023':
+    if  modelset.lower() in ['sonora-2023', 'hd13724b_g395h']:
 
         # Get the 32 points
         ind00000 = np.where( (T1['teff'] == x0) & (T1['logg'] == y0) & (T1['M_H'] == z0) & (T1['kzz'] == t0) & (T1['CO'] == w0) ) # 00000
@@ -594,7 +594,7 @@ def InterpModel(teff, logg=4, metal=0, alpha=0, kzz=0, co=0, fsed=20, modelset='
         #print(Points)
         waves2 = GetModel(T1['teff'][ind1111], logg=T1['logg'][ind1111], metal=T1['M_H'][ind1111], alpha=T1['en'][ind1111], instrument=instrument, order=order, gridfile=T1, wave=True)
 
-    if modelset.lower() == 'sonora-2023':
+    if modelset.lower() in ['sonora-2023', 'hd13724b_g395h']:
         return waves2, smart.utils.interpolations.quintilinear_interpolation(np.log10(teff), logg, metal, np.log10(kzz), co, Points)
     elif modelset.lower() == 'sonora-2024':
         return waves2, smart.utils.interpolations.quadlinear_interpolation(np.log10(teff), logg, metal, fsed, Points)
