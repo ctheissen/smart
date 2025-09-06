@@ -346,6 +346,23 @@ elif modelset.lower() == 'sonora-2024':
 				        'lsf_min':5,                                'lsf_max':400, # see JWST/NIRSpec resolving power plot			
 					}
 
+elif modelset.upper() == 'HD13724B_G395H':
+	limits         = { 
+						'teff_min':1000,                            'teff_max':1000,
+						'logg_min':5,                               'logg_max':5,
+						'metal_min':0,                              'metal_max':0.5,
+						'co_min':0.5,                               'co_max':2.5,
+						'kzz_min':10**2,                            'kzz_max':10**9,
+						'vsini_min':0.0,                            'vsini_max':100.0,
+						'rv_min':-1000.0,                           'rv_max':1000.0,
+						'am_min':1.0,                               'am_max':3.0,
+						'pwv_min':0.5,                            	'pwv_max':20.0,
+						'A_min':-50,								'A_max':50,
+						'B_min':-0.6,								'B_max':0.6,
+						'N_min':0.10,                               'N_max':2.0, 	
+				        'lsf_min':5,                                'lsf_max':400, # see JWST/NIRSpec resolving power plot			
+					}
+
 elif 'sonora' in modelset.lower():
 	limits         = { 
 						'teff_min':max(priors['teff_min']-300,200), 'teff_max':min(priors['teff_max']+300,2400),
@@ -432,7 +449,7 @@ def lnlike(theta):
 
 	## Parameters MCMC
 	#print('THETA:', theta)
-	teff, logg, metal, fsed, rv, A, lsf = theta #N noise prefactor
+	metal, co, kzz, rv, A, lsf = theta #N noise prefactor
 	#teff, logg, vsini, rv, , am, pwv, A, B, freq, amp, phase = theta
 	
 	#print('DATA')
@@ -441,7 +458,7 @@ def lnlike(theta):
 	#print(data.wave.shape)
 	#print(mask)
 
-	model = model_fit.makeModel(teff=teff, logg=logg, metal=metal, fsed=fsed, rv=rv, flux_mult=A, #wave_offset=B, 
+	model = model_fit.makeModel(teff=1000, logg=5, metal=metal, co=co, kzz=kzz, rv=rv, flux_mult=A, #wave_offset=B, 
 		lsf=lsf, order=str(data.order), data=data, modelset=modelset, include_fringe_model=include_fringe_model, 
 		instrument=instrument, tell=False, smoothbreads=True, mask=mask, continuum=False)
 	
@@ -494,12 +511,13 @@ def lnprior(theta, limits=limits):
 	Specifies a flat prior
 	"""
 	## Parameters for theta
-	teff, logg, metal, fsed, rv, A, lsf = theta
+	metal, co, kzz, rv, A, lsf = theta
 
-	if  limits['teff_min']  < teff  < limits['teff_max'] \
-	and limits['logg_min']  < logg  < limits['logg_max'] \
-	and limits['metal_min'] < metal < limits['metal_max'] \
-	and limits['fsed_min']  < fsed  < limits['fsed_max'] \
+	#print('%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f'%(metal, co, kzz, rv, A, lsf))
+
+	if  limits['metal_min'] < metal < limits['metal_max'] \
+	and limits['co_min']    < co    < limits['co_max'] \
+	and limits['kzz_min']   < kzz   < limits['kzz_max'] \
 	and limits['rv_min']    < rv    < limits['rv_max']   \
 	and limits['A_min']     < A     < limits['A_max']\
 	and limits['lsf_min']   < lsf   < limits['lsf_max']:
@@ -517,10 +535,12 @@ def lnprob(theta):
 		
 	return lnp + lnlike(theta)
 
-pos = [np.array([	priors['teff_min']  + (priors['teff_max']   - priors['teff_min'] ) * np.random.uniform(), 
-					priors['logg_min']  + (priors['logg_max']   - priors['logg_min'] ) * np.random.uniform(), 
+pos = [np.array([	#priors['teff_min']  + (priors['teff_max']   - priors['teff_min'] ) * np.random.uniform(), 
+					#priors['logg_min']  + (priors['logg_max']   - priors['logg_min'] ) * np.random.uniform(), 
 					priors['metal_min'] + (priors['metal_max']  - priors['metal_min'] ) * np.random.uniform(), 
-					priors['fsed_min']  + (priors['fsed_max']   - priors['fsed_min'] ) * np.random.uniform(), 
+					priors['co_min']    + (priors['co_max']     - priors['co_min'] ) * np.random.uniform(),  
+					priors['kzz_min']   + (priors['kzz_max']    - priors['kzz_min'] ) * np.random.uniform(),  
+					#priors['fsed_min']  + (priors['fsed_max']   - priors['fsed_min'] ) * np.random.uniform(), 
 					#priors['vsini_min'] + (priors['vsini_max']  - priors['vsini_min']) * np.random.uniform(),
 					priors['rv_min']    + (priors['rv_max']     - priors['rv_min']   ) * np.random.uniform(), 
 					priors['A_min']     + (priors['A_max']      - priors['A_min'])     * np.random.uniform(),
@@ -538,9 +558,9 @@ sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, a=moves, moves=emcee.mov
 time1 = time.time()
 sampler.run_mcmc(pos, step, progress=True)
 time2 = time.time()
-'''
-## multiprocessing
 
+## multiprocessing
+'''
 set_start_method('fork')
 with Pool() as pool:
 	#sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, args=(data, lsf, pwv), a=moves, pool=pool)
@@ -569,10 +589,12 @@ print('SAVE PATH:', save_to_path)
 sampler_chain = np.load(save_to_path + '/sampler_chain.npy')
 samples       = np.load(save_to_path + '/samples.npy')
 
-ylabels = ["$T_{\mathrm{eff}} (K)$",
-           "$\log{g}$(dex)",
+ylabels = [#"$T_{\mathrm{eff}} (K)$",
+           #"$\log{g}$(dex)",
            "[M/H]",
-           "fsed",
+           'C/O',
+           'kzz',
+           #"fsed",
            "$RV(km/s)$",
            "$C_{F_{\lambda}}$ (cnt/s)",
            #"$C_\mathrm{Noise}$",
@@ -606,11 +628,11 @@ triangle_samples = sampler_chain[:, burn:, :].reshape((-1, ndim))
 #print(triangle_samples.shape)
 
 # create the final spectra comparison
-teff_mcmc, logg_mcmc, metal_mcmc, fsed_mcmc, rv_mcmc, A_mcmc, lsf_mcmc = map(lambda v: (v[1], v[2]-v[1], v[1]-v[0]), 
+metal_mcmc, co_mcmc, kzz_mcmc, rv_mcmc, A_mcmc, lsf_mcmc = map(lambda v: (v[1], v[2]-v[1], v[1]-v[0]), 
 	zip(*np.percentile(triangle_samples, [16, 50, 84], axis=0)))
 
 
-print(teff_mcmc, logg_mcmc, metal_mcmc, fsed_mcmc, rv_mcmc, A_mcmc, lsf_mcmc)
+print(metal_mcmc, co_mcmc, kzz_mcmc, rv_mcmc, A_mcmc, lsf_mcmc)
 
 # add the summary to the txt file
 
@@ -618,10 +640,12 @@ print(teff_mcmc, logg_mcmc, metal_mcmc, fsed_mcmc, rv_mcmc, A_mcmc, lsf_mcmc)
 log_path2 = save_to_path + '/mcmc_result.txt'
 
 file_log2 = open(log_path2,"w+")
-file_log2.write("teff_mcmc {}\n".format(str(teff_mcmc[0])))
-file_log2.write("logg_mcmc {}\n".format(str(logg_mcmc[0])))
+#file_log2.write("teff_mcmc {}\n".format(str(teff_mcmc[0])))
+#file_log2.write("logg_mcmc {}\n".format(str(logg_mcmc[0])))
 file_log2.write("metal_mcmc {}\n".format(str(metal_mcmc[0])))
-file_log2.write("fsed_mcmc {}\n".format(str(fsed_mcmc[0])))
+file_log2.write("co_mcmc {}\n".format(str(co_mcmc[0])))
+file_log2.write("kzz_mcmc {}\n".format(str(kzz_mcmc[0])))
+#file_log2.write("fsed_mcmc {}\n".format(str(fsed_mcmc[0])))
 #file_log2.write("vsini_mcmc {}\n".format(str(vsini_mcmc[0])))
 file_log2.write("rv_mcmc {}\n".format(str(rv_mcmc[0]+barycorr)))
 #file_log2.write("am_mcmc {}\n".format(str(am_mcmc[0])))
@@ -630,10 +654,12 @@ file_log2.write("A_mcmc {}\n".format(str(A_mcmc[0])))
 #file_log2.write("B_mcmc {}\n".format(str(B_mcmc[0])))
 #file_log2.write("N_mcmc {}\n".format(str(N_mcmc[0])))
 file_log2.write("lsf_mcmc {}\n".format(str(lsf_mcmc[0])))
-file_log2.write("teff_mcmc_e {}\n".format(str(max(abs(teff_mcmc[1]), abs(teff_mcmc[2])))))
-file_log2.write("logg_mcmc_e {}\n".format(str(max(abs(logg_mcmc[1]), abs(logg_mcmc[2])))))
+#file_log2.write("teff_mcmc_e {}\n".format(str(max(abs(teff_mcmc[1]), abs(teff_mcmc[2])))))
+#file_log2.write("logg_mcmc_e {}\n".format(str(max(abs(logg_mcmc[1]), abs(logg_mcmc[2])))))
 file_log2.write("metal_mcmc_e {}\n".format(str(max(abs(metal_mcmc[1]), abs(metal_mcmc[2])))))
-file_log2.write("fsed_mcmc_e {}\n".format(str(max(abs(fsed_mcmc[1]), abs(fsed_mcmc[2])))))
+file_log2.write("co_mcmc_e {}\n".format(str(max(abs(co_mcmc[1]), abs(co_mcmc[2])))))
+file_log2.write("kzz_mcmc_e {}\n".format(str(max(abs(kzz_mcmc[1]), abs(kzz_mcmc[2])))))
+#file_log2.write("fsed_mcmc_e {}\n".format(str(max(abs(fsed_mcmc[1]), abs(fsed_mcmc[2])))))
 #file_log2.write("vsini_mcmc_e {}\n".format(str(max(abs(vsini_mcmc[1]), abs(vsini_mcmc[2])))))
 file_log2.write("rv_mcmc_e {}\n".format(str(max(abs(rv_mcmc[1]), abs(rv_mcmc[2])))))
 #file_log2.write("am_mcmc_e {}\n".format(str(max(abs(am_mcmc[1]), abs(am_mcmc[2])))))
@@ -644,10 +670,12 @@ file_log2.write("A_mcmc_e {}\n".format(str(max(abs(A_mcmc[1]), abs(A_mcmc[2]))))
 file_log2.write("lsf_mcmc_e {}\n".format(str(max(abs(lsf_mcmc[1]), abs(lsf_mcmc[2])))))
 # upper and lower uncertainties
 # upper uncertainties
-file_log2.write("teff_mcmc_ue {}\n".format(str(abs(teff_mcmc[1]))))
-file_log2.write("logg_mcmc_ue {}\n".format(str(abs(logg_mcmc[1]))))
+#file_log2.write("teff_mcmc_ue {}\n".format(str(abs(teff_mcmc[1]))))
+#file_log2.write("logg_mcmc_ue {}\n".format(str(abs(logg_mcmc[1]))))
 file_log2.write("metal_mcmc_ue {}\n".format(str(abs(metal_mcmc[1]))))
-file_log2.write("fsed_mcmc_ue {}\n".format(str(abs(fsed_mcmc[1]))))
+file_log2.write("co_mcmc_ue {}\n".format(str(abs(co_mcmc[1]))))
+file_log2.write("kzz_mcmc_ue {}\n".format(str(abs(kzz_mcmc[1]))))
+#file_log2.write("fsed_mcmc_ue {}\n".format(str(abs(fsed_mcmc[1]))))
 #file_log2.write("vsini_mcmc_ue {}\n".format(str(abs(vsini_mcmc[1]))))
 file_log2.write("rv_mcmc_ue {}\n".format(str(abs(rv_mcmc[1]))))
 #file_log2.write("am_mcmc_ue {}\n".format(str(abs(am_mcmc[1]))))
@@ -657,10 +685,12 @@ file_log2.write("A_mcmc_ue {}\n".format(str(abs(A_mcmc[1]))))
 #file_log2.write("N_mcmc_ue {}\n".format(str(abs(N_mcmc[1]))))
 file_log2.write("lsf_mcmc_ue {}\n".format(str(abs(lsf_mcmc[1]))))
 # lower uncertainties
-file_log2.write("teff_mcmc_le {}\n".format(str(abs(teff_mcmc[2]))))
-file_log2.write("logg_mcmc_le {}\n".format(str(abs(logg_mcmc[2]))))
+#file_log2.write("teff_mcmc_le {}\n".format(str(abs(teff_mcmc[2]))))
+#file_log2.write("logg_mcmc_le {}\n".format(str(abs(logg_mcmc[2]))))
 file_log2.write("metal_mcmc_le {}\n".format(str(abs(metal_mcmc[2]))))
-file_log2.write("fsed_mcmc_le {}\n".format(str(abs(fsed_mcmc[2]))))
+file_log2.write("co_mcmc_le {}\n".format(str(abs(co_mcmc[2]))))
+file_log2.write("kzz_mcmc_le {}\n".format(str(abs(kzz_mcmc[2]))))
+#file_log2.write("fsed_mcmc_le {}\n".format(str(abs(fsed_mcmc[2]))))
 #file_log2.write("vsini_mcmc_le {}\n".format(str(abs(vsini_mcmc[2]))))
 file_log2.write("rv_mcmc_le {}\n".format(str(abs(rv_mcmc[2]))))
 #file_log2.write("am_mcmc_le {}\n".format(str(abs(am_mcmc[2]))))
@@ -680,10 +710,13 @@ print('Creating corner plot')
 plt.rc('font', family='sans-serif')
 fig = corner.corner(triangle_samples, 
 	labels=ylabels,
-	truths=[teff_mcmc[0], 
-	logg_mcmc[0], 
+	truths=[
+	#teff_mcmc[0], 
+	#logg_mcmc[0], 
 	metal_mcmc[0], 
-	fsed_mcmc[0], 
+	co_mcmc[0], 
+	kzz_mcmc[0], 
+	#fsed_mcmc[0], 
 	rv_mcmc[0]+barycorr, 
 	A_mcmc[0],
 	#N_mcmc[0],
@@ -697,10 +730,12 @@ if plot_show:
 	plt.show()
 plt.close()
 
-teff  = teff_mcmc[0]
-logg  = logg_mcmc[0]
+teff  = 1000#teff_mcmc[0]
+logg  = 5#logg_mcmc[0]
 z     = metal_mcmc[0]
-fsed  = fsed_mcmc[0]
+co    = co_mcmc[0]
+kzz   = kzz_mcmc[0]
+#fsed  = fsed_mcmc[0]
 #vsini = vsini_mcmc[0]
 rv    = rv_mcmc[0]
 A     = A_mcmc[0]
@@ -708,10 +743,10 @@ A     = A_mcmc[0]
 #N     = N_mcmc[0]
 lsf   = lsf_mcmc[0]
 
-print('Best-fit params:', teff, logg, z, fsed, rv, A, lsf)
+print('Best-fit params:', z, co, kzz, rv, A, lsf)
 
 print('Creating model and data plot')
-model = model_fit.makeModel(teff=teff, logg=logg, metal=z, fsed=fsed, rv=rv, flux_mult=A,
+model = model_fit.makeModel(teff=teff, logg=logg, metal=z, co=co, kzz=kzz, rv=rv, flux_mult=A,
 	lsf=lsf, order=str(data.order), data=data, modelset=modelset, 
 	include_fringe_model=False, instrument=instrument, tell=False, smoothbreads=True, mask=mask, continuum=False)
 
@@ -749,19 +784,18 @@ ax3.set_xlabel("$\lambda$ ($\AA$)",fontsize=15)
 #	horizontalalignment='right',
 #	verticalalignment='center',
 #	fontsize=15)
-plt.figtext(0.89,0.82,"$Teff \, {0}^{{+{1}}}_{{-{2}}}/ logg \, {3}^{{+{4}}}_{{-{5}}}/ [M/H] \, {6}^{{+{7}}}_{{-{8}}}/ fsed \, {9}^{{+{10}}}_{{-{11}}}/RV \, {12}^{{+{13}}}_{{-{14}}}$".format(\
-	round(teff_mcmc[0]),
-	round(teff_mcmc[1]),
-	round(teff_mcmc[2]),
-	round(logg_mcmc[0],1),
-	round(logg_mcmc[1],3),
-	round(logg_mcmc[2],3),
+plt.figtext(0.89,0.82,"$Teff \, {0}/ logg \, {1}/ [M/H] \, {2}^{{+{3}}}_{{-{4}}}/ co \, {5}^{{+{6}}}_{{-{7}}}/ kzz \, {8}^{{+{9}}}_{{-{10}}}/RV \, {11}^{{+{12}}}_{{-{13}}}$".format(\
+	round(teff),
+	round(logg),
 	round(metal_mcmc[0],1),
 	round(metal_mcmc[1],3),
 	round(metal_mcmc[2],3),
-	round(fsed_mcmc[0],1),
-	round(fsed_mcmc[1],3),
-	round(fsed_mcmc[2],3),
+	round(co_mcmc[0],1),
+	round(co_mcmc[1],3),
+	round(co_mcmc[2],3),
+	round(kzz_mcmc[0],1),
+	round(kzz_mcmc[1],3),
+	round(kzz_mcmc[2],3),
 	round(rv_mcmc[0]+barycorr,2),
 	round(rv_mcmc[1],2),
 	round(rv_mcmc[2],2)),
@@ -803,10 +837,12 @@ file_log.write("mean_acceptance_fraction {0:.3f} \n".format(np.mean(sampler.acce
 file_log.write("mean_autocorrelation_time {0:.3f} \n".format(np.mean(autocorr_time)))
 file_log.write("chi2 {} \n".format(round(smart.chisquare(data,model))))
 file_log.write("dof {} \n".format(round(len(data.wave-ndim)/3)))
-file_log.write("teff_mcmc {} K\n".format(str(teff_mcmc)))
-file_log.write("logg_mcmc {} dex (cgs)\n".format(str(logg_mcmc)))
+#file_log.write("teff_mcmc {} K\n".format(str(teff_mcmc)))
+#file_log.write("logg_mcmc {} dex (cgs)\n".format(str(logg_mcmc)))
 file_log.write("metal_mcmc {} dex\n".format(str(metal_mcmc)))
-file_log.write("fsed_mcmc {} dex\n".format(str(fsed_mcmc)))
+file_log.write("co_mcmc {} dex\n".format(str(co_mcmc)))
+file_log.write("kzz_mcmc {} dex\n".format(str(kzz_mcmc)))
+#file_log.write("fsed_mcmc {} dex\n".format(str(fsed_mcmc)))
 #file_log.write("vsini_mcmc {} km/s\n".format(str(vsini_mcmc)))
 file_log.write("rv_mcmc {} km/s\n".format(str(rv_mcmc)))
 #file_log.write("am_mcmc {}\n".format(str(am_mcmc)))
@@ -817,42 +853,8 @@ file_log.write("A_mcmc {}\n".format(str(A_mcmc)))
 file_log.write("lsf_mcmc {}\n".format(str(lsf_mcmc)))
 file_log.close()
 
-'''
-# excel summary file
-cat = pd.DataFrame(columns=['date_obs','date_name','tell_name','data_path''save_path',
-							'model_date','model_time','data_mask','order','coadd','med_snr','lsf',
-							'barycorr','modelset','priors','limits','ndim','nwalkers','step','burn',
-							'rv','e_rv','ue_rv','le_rv',#'vsini','e_vsini','ue_vsini','le_vsini',
-							'teff','e_teff','ue_teff','le_teff','logg','e_logg','ue_logg','le_logg',
-							'cflux','e_cflux','ue_cflux','le_cflux',#'cwave','e_cwave','ue_cwave','le_cwave',
-							'cnoise','e_cnoise','ue_cnoise','le_cnoise',
-							'wave_cal_err','chi2','dof','acceptance_fraction','autocorr_time'])
-
-'''
 med_snr      = np.nanmedian(data.flux/data.noise)
 if instrument == 'nirspec':
 	wave_cal_err = tell_sp.header['STD']
 else:
 	wave_cal_err = np.nan
-'''
-cat = pd.DataFrame({'date_obs':date_obs,'date_name':sci_data_name,#'tell_name':tell_data_name,
-					'data_path':data_path,#'tell_path':tell_path,
-					'save_path':save_to_path,
-					'model_date':today.isoformat(),'model_time':dt_string,'data_mask':custom_mask,
-					#'order':order,'coadd':coadd,'mjd':mjd,
-					'med_snr':med_snr,'lsf':lsf, 'barycorr':barycorr,
-					'modelset':modelset, 'priors':priors, 'limits':limits, 
-					'ndim':ndim, 'nwalkers':nwalkers,'step':step, 'burn':burn,
-					'rv':rv_mcmc[0]+barycorr, 'e_rv':max(rv_mcmc[1], rv_mcmc[2]), 'ue_rv':rv_mcmc[1], 'le_rv':rv_mcmc[2],
-					#'vsini':vsini_mcmc[0], 'e_vsini':max(vsini_mcmc[1], vsini_mcmc[2]), 'ue_vsini':vsini_mcmc[1], 'le_vsini':vsini_mcmc[2],
-					'teff':teff_mcmc[0], 'e_teff':max(teff_mcmc[1],teff_mcmc[2]), 'ue_teff':teff_mcmc[1], 'le_teff':teff_mcmc[2],
-					'logg':logg_mcmc[0], 'e_logg':max(logg_mcmc[1], logg_mcmc[2]), 'ue_logg':logg_mcmc[1], 'le_logg':logg_mcmc[2],
-					#'am':am_mcmc[0], 'e_am':max(am_mcmc[1], am_mcmc[2]), 'ue_am':am_mcmc[1], 'le_am':am_mcmc[2], 
-					#'pwv':pwv_mcmc[0], 'e_pwv':max(pwv_mcmc[1], pwv_mcmc[2]), 'ue_pwv':pwv_mcmc[1], 'le_pwv':pwv_mcmc[2],
-					'cflux':A_mcmc[0], 'e_cflux':max(A_mcmc[1], A_mcmc[2]), 'ue_cflux':A_mcmc[1], 'le_cflux':A_mcmc[2],
-					#'cwave':B_mcmc[0], 'e_cwave':max(B_mcmc[1], B_mcmc[2]), 'ue_cwave':B_mcmc[1], 'le_cwave':B_mcmc[2], 
-					'cnoise':N_mcmc[0],'e_cnoise':max(N_mcmc[1], N_mcmc[2]), 'ue_cnoise':N_mcmc[1], 'le_cnoise':N_mcmc[2], 
-					'wave_cal_err':wave_cal_err, }, index=[0])
-
-cat.to_excel(save_to_path + '/mcmc_summary.xlsx', index=False)
-'''
