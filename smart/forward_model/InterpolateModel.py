@@ -193,6 +193,7 @@ def InterpModel(teff, logg=4, metal=0, alpha=0, kzz=0, co=0, fsed=20, modelset='
                              set(T1['CO'][np.where( (T1['teff'] == x1) & (T1['logg'] == y1) & (T1['M_H'] == z1) & (T1['kzz'] == t1) & (T1['CO'] >= co) )])))
             #print('co:', w0, co, w1)
 
+
         if modelset.lower() == 'sonora-2024':
 
             # Get the nearest models to the gridpoint (teff)
@@ -220,6 +221,7 @@ def InterpModel(teff, logg=4, metal=0, alpha=0, kzz=0, co=0, fsed=20, modelset='
             t1 = np.min(list(set(T1['fsed'][np.where( (T1['teff'] == x0) & (T1['logg'] == y0) & (T1['M_H'] == z0) & (T1['fsed'] >= fsed) )]) & 
                              set(T1['fsed'][np.where( (T1['teff'] == x1) & (T1['logg'] == y1) & (T1['M_H'] == z1) & (T1['fsed'] >= fsed) )])))
             #print('fsed:', t0, fsed, t1)
+
 
         elif 'sonora' in modelset.lower() and '2023' not in modelset:
 
@@ -251,6 +253,38 @@ def InterpModel(teff, logg=4, metal=0, alpha=0, kzz=0, co=0, fsed=20, modelset='
             #print(t0, t1)
         
 
+        elif modelset.lower() == 'phoenix-newera-aces-cond-2023':
+
+            # Get the nearest models to the gridpoint (teff)
+            x0 = np.max(T1['teff'][np.where(T1['teff'] <= teff)])
+            x1 = np.min(T1['teff'][np.where(T1['teff'] >= teff)])
+            #print('teff:', x0, teff, x1)
+            # Get the nearest grid point to logg
+            y0 = np.max(list(set(T1['logg'][np.where( (T1['teff'] == x0) & (T1['logg'] <= logg) )]) &
+                             set(T1['logg'][np.where( (T1['teff'] == x1) & (T1['logg'] <= logg) )])))
+            y1 = np.min(list(set(T1['logg'][np.where( (T1['teff'] == x0) & (T1['logg'] >= logg) )]) &
+                             set(T1['logg'][np.where( (T1['teff'] == x1) & (T1['logg'] >= logg) )])))
+            #print('logg:', y0, logg, y1)
+            # Get the nearest grid point to [M/H]
+            z0 = np.max(list(set(T1['M_H'][np.where( (T1['teff'] == x0) & (T1['logg'] == y0) & (T1['M_H'] <= metal) )]) &
+                             set(T1['M_H'][np.where( (T1['teff'] == x1) & (T1['logg'] == y1) & (T1['M_H'] <= metal) )])))
+            z1 = np.min(list(set(T1['M_H'][np.where( (T1['teff'] == x0) & (T1['logg'] == y0) & (T1['M_H'] >= metal) )]) &
+                             set(T1['M_H'][np.where( (T1['teff'] == x1) & (T1['logg'] == y1) & (T1['M_H'] >= metal) )])))
+            #print('metal:', z0, metal, z1)
+            # Get the nearest grid point to Alpha
+            t0 = np.max(list(set(T1['en'][np.where( (T1['teff'] == x0) & (T1['logg'] == y0) & (T1['M_H'] == z0) & (T1['en'] <= alpha) )]) &
+                             set(T1['en'][np.where( (T1['teff'] == x1) & (T1['logg'] == y1) & (T1['M_H'] == z1) & (T1['en'] <= alpha) )])))
+            t1 = np.min(list(set(T1['en'][np.where( (T1['teff'] == x0) & (T1['logg'] == y0) & (T1['M_H'] == z0) & (T1['en'] >= alpha) )]) &
+                             set(T1['en'][np.where( (T1['teff'] == x1) & (T1['logg'] == y1) & (T1['M_H'] == z1) & (T1['en'] >= alpha) )])))
+            #print('alpha:', t0, alpha, t1)
+            # Get the nearest grid point to kzz
+            w0 = np.max(list(set(T1['kzz'][np.where( (T1['teff'] == x0) & (T1['logg'] == y0) & (T1['M_H'] == z0) & (T1['en'] == t0) & (T1['kzz'] <= kzz) )]) &
+                             set(T1['kzz'][np.where( (T1['teff'] == x1) & (T1['logg'] == y1) & (T1['M_H'] == z1) & (T1['en'] == t1) & (T1['kzz'] <= kzz) )])))
+            w1 = np.min(list(set(T1['kzz'][np.where( (T1['teff'] == x0) & (T1['logg'] == y0) & (T1['M_H'] == z0) & (T1['en'] == t0) & (T1['kzz'] >= kzz) )]) &
+                             set(T1['kzz'][np.where( (T1['teff'] == x1) & (T1['logg'] == y1) & (T1['M_H'] == z1) & (T1['en'] == t1) & (T1['kzz'] >= kzz) )])))
+            #print('kzz:', w0, kzz, w1)
+
+
         elif kzz != 0:
 
             #print('KZZ Models')
@@ -259,7 +293,7 @@ def InterpModel(teff, logg=4, metal=0, alpha=0, kzz=0, co=0, fsed=20, modelset='
             x0 = np.max(T1['teff'][np.where( (T1['teff'] <= teff) )])
             x1 = np.min(T1['teff'][np.where( (T1['teff'] >= teff) )])
             #print(x0, x1)
-            
+    
             # Get the nearest grid point to logg
             y0 = np.max(list(set(T1['logg'][np.where( (T1['teff'] == x0) & (T1['logg'] <= logg) )]) & 
                              set(T1['logg'][np.where( (T1['teff'] == x1) & (T1['logg'] <= logg) )])))
@@ -280,6 +314,7 @@ def InterpModel(teff, logg=4, metal=0, alpha=0, kzz=0, co=0, fsed=20, modelset='
             t1 = np.min(list(set(T1['kzz'][np.where( (T1['teff'] == x0) & (T1['logg'] == y0) & (T1['M_H'] == z0) & (T1['kzz'] >= kzz) )]) & 
                              set(T1['kzz'][np.where( (T1['teff'] == x1) & (T1['logg'] == y1) & (T1['M_H'] == z1) & (T1['kzz'] >= kzz) )])))
             #print(t0, t1)
+
 
         else:
 
@@ -426,6 +461,110 @@ def InterpModel(teff, logg=4, metal=0, alpha=0, kzz=0, co=0, fsed=20, modelset='
                   ]
         #print(Points)
         waves2 = GetModel(T1['teff'][ind11111], logg=T1['logg'][ind11111], metal=T1['M_H'][ind11111], kzz=T1['kzz'][ind11111], co=T1['CO'][ind11111], instrument=instrument, order=order, gridfile=T1, wave=True)
+
+
+    elif  modelset.lower() in ['phoenix-newera-aces-cond-2023']:
+
+        # Get the 32 points
+        ind00000 = np.where( (T1['teff'] == x0) & (T1['logg'] == y0) & (T1['M_H'] == z0) & (T1['en'] == t0) & (T1['kzz'] == w0) ) # 00000
+        ind00001 = np.where( (T1['teff'] == x0) & (T1['logg'] == y0) & (T1['M_H'] == z0) & (T1['en'] == t0) & (T1['kzz'] == w1) ) # 00001
+        ind00010 = np.where( (T1['teff'] == x0) & (T1['logg'] == y0) & (T1['M_H'] == z0) & (T1['en'] == t1) & (T1['kzz'] == w0) ) # 00010
+        ind00011 = np.where( (T1['teff'] == x0) & (T1['logg'] == y0) & (T1['M_H'] == z0) & (T1['en'] == t1) & (T1['kzz'] == w1) ) # 00011
+        ind00100 = np.where( (T1['teff'] == x0) & (T1['logg'] == y0) & (T1['M_H'] == z1) & (T1['en'] == t0) & (T1['kzz'] == w0) ) # 00100
+        ind00101 = np.where( (T1['teff'] == x0) & (T1['logg'] == y0) & (T1['M_H'] == z1) & (T1['en'] == t0) & (T1['kzz'] == w1) ) # 00101
+        ind00110 = np.where( (T1['teff'] == x0) & (T1['logg'] == y0) & (T1['M_H'] == z1) & (T1['en'] == t1) & (T1['kzz'] == w0) ) # 00110
+        ind00111 = np.where( (T1['teff'] == x0) & (T1['logg'] == y0) & (T1['M_H'] == z1) & (T1['en'] == t1) & (T1['kzz'] == w1) ) # 00111
+        ind01000 = np.where( (T1['teff'] == x0) & (T1['logg'] == y1) & (T1['M_H'] == z0) & (T1['en'] == t0) & (T1['kzz'] == w0) ) # 01000
+        ind01001 = np.where( (T1['teff'] == x0) & (T1['logg'] == y1) & (T1['M_H'] == z0) & (T1['en'] == t0) & (T1['kzz'] == w1) ) # 01001
+        ind01010 = np.where( (T1['teff'] == x0) & (T1['logg'] == y1) & (T1['M_H'] == z0) & (T1['en'] == t1) & (T1['kzz'] == w0) ) # 01010
+        ind01011 = np.where( (T1['teff'] == x0) & (T1['logg'] == y1) & (T1['M_H'] == z0) & (T1['en'] == t1) & (T1['kzz'] == w1) ) # 01011
+        ind01100 = np.where( (T1['teff'] == x0) & (T1['logg'] == y1) & (T1['M_H'] == z1) & (T1['en'] == t0) & (T1['kzz'] == w0) ) # 01100
+        ind01101 = np.where( (T1['teff'] == x0) & (T1['logg'] == y1) & (T1['M_H'] == z1) & (T1['en'] == t0) & (T1['kzz'] == w1) ) # 01101
+        ind01110 = np.where( (T1['teff'] == x0) & (T1['logg'] == y1) & (T1['M_H'] == z1) & (T1['en'] == t1) & (T1['kzz'] == w0) ) # 01110
+        ind01111 = np.where( (T1['teff'] == x0) & (T1['logg'] == y1) & (T1['M_H'] == z1) & (T1['en'] == t1) & (T1['kzz'] == w1) ) # 01111
+        ind10000 = np.where( (T1['teff'] == x1) & (T1['logg'] == y0) & (T1['M_H'] == z0) & (T1['en'] == t0) & (T1['kzz'] == w0) ) # 10000
+        ind10001 = np.where( (T1['teff'] == x1) & (T1['logg'] == y0) & (T1['M_H'] == z0) & (T1['en'] == t0) & (T1['kzz'] == w1) ) # 10001
+        ind10010 = np.where( (T1['teff'] == x1) & (T1['logg'] == y0) & (T1['M_H'] == z0) & (T1['en'] == t1) & (T1['kzz'] == w0) ) # 10010
+        ind10011 = np.where( (T1['teff'] == x1) & (T1['logg'] == y0) & (T1['M_H'] == z0) & (T1['en'] == t1) & (T1['kzz'] == w1) ) # 10011
+        ind10100 = np.where( (T1['teff'] == x1) & (T1['logg'] == y0) & (T1['M_H'] == z1) & (T1['en'] == t0) & (T1['kzz'] == w0) ) # 10100
+        ind10101 = np.where( (T1['teff'] == x1) & (T1['logg'] == y0) & (T1['M_H'] == z1) & (T1['en'] == t0) & (T1['kzz'] == w1) ) # 10101
+        ind10110 = np.where( (T1['teff'] == x1) & (T1['logg'] == y0) & (T1['M_H'] == z1) & (T1['en'] == t1) & (T1['kzz'] == w0) ) # 10110
+        ind10111 = np.where( (T1['teff'] == x1) & (T1['logg'] == y0) & (T1['M_H'] == z1) & (T1['en'] == t1) & (T1['kzz'] == w1) ) # 10111
+        ind11000 = np.where( (T1['teff'] == x1) & (T1['logg'] == y1) & (T1['M_H'] == z0) & (T1['en'] == t0) & (T1['kzz'] == w0) ) # 11000
+        ind11001 = np.where( (T1['teff'] == x1) & (T1['logg'] == y1) & (T1['M_H'] == z0) & (T1['en'] == t0) & (T1['kzz'] == w1) ) # 11001
+        ind11010 = np.where( (T1['teff'] == x1) & (T1['logg'] == y1) & (T1['M_H'] == z0) & (T1['en'] == t1) & (T1['kzz'] == w0) ) # 11010
+        ind11011 = np.where( (T1['teff'] == x1) & (T1['logg'] == y1) & (T1['M_H'] == z0) & (T1['en'] == t1) & (T1['kzz'] == w1) ) # 11011
+        ind11100 = np.where( (T1['teff'] == x1) & (T1['logg'] == y1) & (T1['M_H'] == z1) & (T1['en'] == t0) & (T1['kzz'] == w0) ) # 11100
+        ind11101 = np.where( (T1['teff'] == x1) & (T1['logg'] == y1) & (T1['M_H'] == z1) & (T1['en'] == t0) & (T1['kzz'] == w1) ) # 11101
+        ind11110 = np.where( (T1['teff'] == x1) & (T1['logg'] == y1) & (T1['M_H'] == z1) & (T1['en'] == t1) & (T1['kzz'] == w0) ) # 11110
+        ind11111 = np.where( (T1['teff'] == x1) & (T1['logg'] == y1) & (T1['M_H'] == z1) & (T1['en'] == t1) & (T1['kzz'] == w1) ) # 11111
+        Points =  [ [np.log10(T1['teff'][ind00000].data[0]), T1['logg'][ind00000].data[0], T1['M_H'][ind00000].data[0], T1['en'][ind00000].data[0], np.log10(T1['kzz'][ind00000].data[0]),
+                     np.log10(GetModel(T1['teff'][ind00000], logg=T1['logg'][ind00000], metal=T1['M_H'][ind00000], alpha=T1['en'][ind00000], kzz=T1['kzz'][ind00000], instrument=instrument, order=order, gridfile=T1))],
+                    [np.log10(T1['teff'][ind00001].data[0]), T1['logg'][ind00001].data[0], T1['M_H'][ind00001].data[0], T1['en'][ind00001].data[0], np.log10(T1['kzz'][ind00001].data[0]),
+                     np.log10(GetModel(T1['teff'][ind00001], logg=T1['logg'][ind00001], metal=T1['M_H'][ind00001], alpha=T1['en'][ind00001], kzz=T1['kzz'][ind00001], instrument=instrument, order=order, gridfile=T1))],
+                    [np.log10(T1['teff'][ind00010].data[0]), T1['logg'][ind00010].data[0], T1['M_H'][ind00010].data[0], T1['en'][ind00010].data[0], np.log10(T1['kzz'][ind00010].data[0]),
+                     np.log10(GetModel(T1['teff'][ind00010], logg=T1['logg'][ind00010], metal=T1['M_H'][ind00010], alpha=T1['en'][ind00010], kzz=T1['kzz'][ind00010], instrument=instrument, order=order, gridfile=T1))],
+                    [np.log10(T1['teff'][ind00011].data[0]), T1['logg'][ind00011].data[0], T1['M_H'][ind00011].data[0], T1['en'][ind00011].data[0], np.log10(T1['kzz'][ind00011].data[0]),
+                     np.log10(GetModel(T1['teff'][ind00011], logg=T1['logg'][ind00011], metal=T1['M_H'][ind00011], alpha=T1['en'][ind00011], kzz=T1['kzz'][ind00011], instrument=instrument, order=order, gridfile=T1))],
+                    [np.log10(T1['teff'][ind00100].data[0]), T1['logg'][ind00100].data[0], T1['M_H'][ind00100].data[0], T1['en'][ind00100].data[0], np.log10(T1['kzz'][ind00100].data[0]),
+                     np.log10(GetModel(T1['teff'][ind00100], logg=T1['logg'][ind00100], metal=T1['M_H'][ind00100], alpha=T1['en'][ind00100], kzz=T1['kzz'][ind00100], instrument=instrument, order=order, gridfile=T1))],
+                    [np.log10(T1['teff'][ind00101].data[0]), T1['logg'][ind00101].data[0], T1['M_H'][ind00101].data[0], T1['en'][ind00101].data[0], np.log10(T1['kzz'][ind00101].data[0]),
+                     np.log10(GetModel(T1['teff'][ind00101], logg=T1['logg'][ind00101], metal=T1['M_H'][ind00101], alpha=T1['en'][ind00101], kzz=T1['kzz'][ind00101], instrument=instrument, order=order, gridfile=T1))],
+                    [np.log10(T1['teff'][ind00110].data[0]), T1['logg'][ind00110].data[0], T1['M_H'][ind00110].data[0], T1['en'][ind00110].data[0], np.log10(T1['kzz'][ind00110].data[0]),
+                     np.log10(GetModel(T1['teff'][ind00110], logg=T1['logg'][ind00110], metal=T1['M_H'][ind00110], alpha=T1['en'][ind00110], kzz=T1['kzz'][ind00110], instrument=instrument, order=order, gridfile=T1))],
+                    [np.log10(T1['teff'][ind00111].data[0]), T1['logg'][ind00111].data[0], T1['M_H'][ind00111].data[0], T1['en'][ind00111].data[0], np.log10(T1['kzz'][ind00111].data[0]),
+                     np.log10(GetModel(T1['teff'][ind00111], logg=T1['logg'][ind00111], metal=T1['M_H'][ind00111], alpha=T1['en'][ind00111], kzz=T1['kzz'][ind00111], instrument=instrument, order=order, gridfile=T1))],
+                    [np.log10(T1['teff'][ind01000].data[0]), T1['logg'][ind01000].data[0], T1['M_H'][ind01000].data[0], T1['en'][ind01000].data[0], np.log10(T1['kzz'][ind01000].data[0]),
+                     np.log10(GetModel(T1['teff'][ind01000], logg=T1['logg'][ind01000], metal=T1['M_H'][ind01000], alpha=T1['en'][ind01000], kzz=T1['kzz'][ind01000], instrument=instrument, order=order, gridfile=T1))],
+                    [np.log10(T1['teff'][ind01001].data[0]), T1['logg'][ind01001].data[0], T1['M_H'][ind01001].data[0], T1['en'][ind01001].data[0], np.log10(T1['kzz'][ind01001].data[0]),
+                     np.log10(GetModel(T1['teff'][ind01001], logg=T1['logg'][ind01001], metal=T1['M_H'][ind01001], alpha=T1['en'][ind01001], kzz=T1['kzz'][ind01001], instrument=instrument, order=order, gridfile=T1))],
+                    [np.log10(T1['teff'][ind01010].data[0]), T1['logg'][ind01010].data[0], T1['M_H'][ind01010].data[0], T1['en'][ind01010].data[0], np.log10(T1['kzz'][ind01010].data[0]),
+                     np.log10(GetModel(T1['teff'][ind01010], logg=T1['logg'][ind01010], metal=T1['M_H'][ind01010], alpha=T1['en'][ind01010], kzz=T1['kzz'][ind01010], instrument=instrument, order=order, gridfile=T1))],
+                    [np.log10(T1['teff'][ind01011].data[0]), T1['logg'][ind01011].data[0], T1['M_H'][ind01011].data[0], T1['en'][ind01011].data[0], np.log10(T1['kzz'][ind01011].data[0]),
+                     np.log10(GetModel(T1['teff'][ind01011], logg=T1['logg'][ind01011], metal=T1['M_H'][ind01011], alpha=T1['en'][ind01011], kzz=T1['kzz'][ind01011], instrument=instrument, order=order, gridfile=T1))],
+                    [np.log10(T1['teff'][ind01100].data[0]), T1['logg'][ind01100].data[0], T1['M_H'][ind01100].data[0], T1['en'][ind01100].data[0], np.log10(T1['kzz'][ind01100].data[0]),
+                     np.log10(GetModel(T1['teff'][ind01100], logg=T1['logg'][ind01100], metal=T1['M_H'][ind01100], alpha=T1['en'][ind01100], kzz=T1['kzz'][ind01100], instrument=instrument, order=order, gridfile=T1))],
+                    [np.log10(T1['teff'][ind01101].data[0]), T1['logg'][ind01101].data[0], T1['M_H'][ind01101].data[0], T1['en'][ind01101].data[0], np.log10(T1['kzz'][ind01101].data[0]),
+                     np.log10(GetModel(T1['teff'][ind01101], logg=T1['logg'][ind01101], metal=T1['M_H'][ind01101], alpha=T1['en'][ind01101], kzz=T1['kzz'][ind01101], instrument=instrument, order=order, gridfile=T1))],
+                    [np.log10(T1['teff'][ind01110].data[0]), T1['logg'][ind01110].data[0], T1['M_H'][ind01110].data[0], T1['en'][ind01110].data[0], np.log10(T1['kzz'][ind01110].data[0]),
+                     np.log10(GetModel(T1['teff'][ind01110], logg=T1['logg'][ind01110], metal=T1['M_H'][ind01110], alpha=T1['en'][ind01110], kzz=T1['kzz'][ind01110], instrument=instrument, order=order, gridfile=T1))],
+                    [np.log10(T1['teff'][ind01111].data[0]), T1['logg'][ind01111].data[0], T1['M_H'][ind01111].data[0], T1['en'][ind01111].data[0], np.log10(T1['kzz'][ind01111].data[0]),
+                     np.log10(GetModel(T1['teff'][ind01111], logg=T1['logg'][ind01111], metal=T1['M_H'][ind01111], alpha=T1['en'][ind01111], kzz=T1['kzz'][ind01111], instrument=instrument, order=order, gridfile=T1))],
+                    [np.log10(T1['teff'][ind10000].data[0]), T1['logg'][ind10000].data[0], T1['M_H'][ind10000].data[0], T1['en'][ind10000].data[0], np.log10(T1['kzz'][ind10000].data[0]),
+                     np.log10(GetModel(T1['teff'][ind10000], logg=T1['logg'][ind10000], metal=T1['M_H'][ind10000], alpha=T1['en'][ind10000], kzz=T1['kzz'][ind10000], instrument=instrument, order=order, gridfile=T1))],
+                    [np.log10(T1['teff'][ind10001].data[0]), T1['logg'][ind10001].data[0], T1['M_H'][ind10001].data[0], T1['en'][ind10001].data[0], np.log10(T1['kzz'][ind10001].data[0]),
+                     np.log10(GetModel(T1['teff'][ind10001], logg=T1['logg'][ind10001], metal=T1['M_H'][ind10001], alpha=T1['en'][ind10001], kzz=T1['kzz'][ind10001], instrument=instrument, order=order, gridfile=T1))],
+                    [np.log10(T1['teff'][ind10010].data[0]), T1['logg'][ind10010].data[0], T1['M_H'][ind10010].data[0], T1['en'][ind10010].data[0], np.log10(T1['kzz'][ind10010].data[0]),
+                     np.log10(GetModel(T1['teff'][ind10010], logg=T1['logg'][ind10010], metal=T1['M_H'][ind10010], alpha=T1['en'][ind10010], kzz=T1['kzz'][ind10010], instrument=instrument, order=order, gridfile=T1))],
+                    [np.log10(T1['teff'][ind10011].data[0]), T1['logg'][ind10011].data[0], T1['M_H'][ind10011].data[0], T1['en'][ind10011].data[0], np.log10(T1['kzz'][ind10011].data[0]),
+                     np.log10(GetModel(T1['teff'][ind10011], logg=T1['logg'][ind10011], metal=T1['M_H'][ind10011], alpha=T1['en'][ind10011], kzz=T1['kzz'][ind10011], instrument=instrument, order=order, gridfile=T1))],
+                    [np.log10(T1['teff'][ind10100].data[0]), T1['logg'][ind10100].data[0], T1['M_H'][ind10100].data[0], T1['en'][ind10100].data[0], np.log10(T1['kzz'][ind10100].data[0]),
+                     np.log10(GetModel(T1['teff'][ind10100], logg=T1['logg'][ind10100], metal=T1['M_H'][ind10100], alpha=T1['en'][ind10100], kzz=T1['kzz'][ind10100], instrument=instrument, order=order, gridfile=T1))],
+                    [np.log10(T1['teff'][ind10101].data[0]), T1['logg'][ind10101].data[0], T1['M_H'][ind10101].data[0], T1['en'][ind10101].data[0], np.log10(T1['kzz'][ind10101].data[0]),
+                     np.log10(GetModel(T1['teff'][ind10101], logg=T1['logg'][ind10101], metal=T1['M_H'][ind10101], alpha=T1['en'][ind10101], kzz=T1['kzz'][ind10101], instrument=instrument, order=order, gridfile=T1))],
+                    [np.log10(T1['teff'][ind10110].data[0]), T1['logg'][ind10110].data[0], T1['M_H'][ind10110].data[0], T1['en'][ind10110].data[0], np.log10(T1['kzz'][ind10110].data[0]),
+                     np.log10(GetModel(T1['teff'][ind10110], logg=T1['logg'][ind10110], metal=T1['M_H'][ind10110], alpha=T1['en'][ind10110], kzz=T1['kzz'][ind10110], instrument=instrument, order=order, gridfile=T1))],
+                    [np.log10(T1['teff'][ind10111].data[0]), T1['logg'][ind10111].data[0], T1['M_H'][ind10111].data[0], T1['en'][ind10111].data[0], np.log10(T1['kzz'][ind10111].data[0]),
+                     np.log10(GetModel(T1['teff'][ind10111], logg=T1['logg'][ind10111], metal=T1['M_H'][ind10111], alpha=T1['en'][ind10111], kzz=T1['kzz'][ind10111], instrument=instrument, order=order, gridfile=T1))],
+                    [np.log10(T1['teff'][ind11000].data[0]), T1['logg'][ind11000].data[0], T1['M_H'][ind11000].data[0], T1['en'][ind11000].data[0], np.log10(T1['kzz'][ind11000].data[0]),
+                     np.log10(GetModel(T1['teff'][ind11000], logg=T1['logg'][ind11000], metal=T1['M_H'][ind11000], alpha=T1['en'][ind11000], kzz=T1['kzz'][ind11000], instrument=instrument, order=order, gridfile=T1))],
+                    [np.log10(T1['teff'][ind11001].data[0]), T1['logg'][ind11001].data[0], T1['M_H'][ind11001].data[0], T1['en'][ind11001].data[0], np.log10(T1['kzz'][ind11001].data[0]),
+                     np.log10(GetModel(T1['teff'][ind11001], logg=T1['logg'][ind11001], metal=T1['M_H'][ind11001], alpha=T1['en'][ind11001], kzz=T1['kzz'][ind11001], instrument=instrument, order=order, gridfile=T1))],
+                    [np.log10(T1['teff'][ind11010].data[0]), T1['logg'][ind11010].data[0], T1['M_H'][ind11010].data[0], T1['en'][ind11010].data[0], np.log10(T1['kzz'][ind11010].data[0]),
+                     np.log10(GetModel(T1['teff'][ind11010], logg=T1['logg'][ind11010], metal=T1['M_H'][ind11010], alpha=T1['en'][ind11010], kzz=T1['kzz'][ind11010], instrument=instrument, order=order, gridfile=T1))],
+                    [np.log10(T1['teff'][ind11011].data[0]), T1['logg'][ind11011].data[0], T1['M_H'][ind11011].data[0], T1['en'][ind11011].data[0], np.log10(T1['kzz'][ind11011].data[0]),
+                     np.log10(GetModel(T1['teff'][ind11011], logg=T1['logg'][ind11011], metal=T1['M_H'][ind11011], alpha=T1['en'][ind11011], kzz=T1['kzz'][ind11011], instrument=instrument, order=order, gridfile=T1))],
+                    [np.log10(T1['teff'][ind11100].data[0]), T1['logg'][ind11100].data[0], T1['M_H'][ind11100].data[0], T1['en'][ind11100].data[0], np.log10(T1['kzz'][ind11100].data[0]),
+                     np.log10(GetModel(T1['teff'][ind11100], logg=T1['logg'][ind11100], metal=T1['M_H'][ind11100], alpha=T1['en'][ind11100], kzz=T1['kzz'][ind11100], instrument=instrument, order=order, gridfile=T1))],
+                    [np.log10(T1['teff'][ind11101].data[0]), T1['logg'][ind11101].data[0], T1['M_H'][ind11101].data[0], T1['en'][ind11101].data[0], np.log10(T1['kzz'][ind11101].data[0]),
+                     np.log10(GetModel(T1['teff'][ind11101], logg=T1['logg'][ind11101], metal=T1['M_H'][ind11101], alpha=T1['en'][ind11101], kzz=T1['kzz'][ind11101], instrument=instrument, order=order, gridfile=T1))],
+                    [np.log10(T1['teff'][ind11110].data[0]), T1['logg'][ind11110].data[0], T1['M_H'][ind11110].data[0], T1['en'][ind11110].data[0], np.log10(T1['kzz'][ind11110].data[0]),
+                     np.log10(GetModel(T1['teff'][ind11110], logg=T1['logg'][ind11110], metal=T1['M_H'][ind11110], alpha=T1['en'][ind11110], kzz=T1['kzz'][ind11110], instrument=instrument, order=order, gridfile=T1))],
+                    [np.log10(T1['teff'][ind11111].data[0]), T1['logg'][ind11111].data[0], T1['M_H'][ind11111].data[0], T1['en'][ind11111].data[0], np.log10(T1['kzz'][ind11111].data[0]),
+                     np.log10(GetModel(T1['teff'][ind11111], logg=T1['logg'][ind11111], metal=T1['M_H'][ind11111], alpha=T1['en'][ind11111], kzz=T1['kzz'][ind11111], instrument=instrument, order=order, gridfile=T1))],
+                  ]
+        #print(Points)
+        waves2 = GetModel(T1['teff'][ind11111], logg=T1['logg'][ind11111], metal=T1['M_H'][ind11111], alpha=T1['en'][ind11111], kzz=T1['kzz'][ind11111], instrument=instrument, order=order, gridfile=T1, wave=True)
 
 
     elif  modelset.lower() == 'sonora-2024':
@@ -596,6 +735,8 @@ def InterpModel(teff, logg=4, metal=0, alpha=0, kzz=0, co=0, fsed=20, modelset='
 
     if modelset.lower() in ['sonora-2023', 'hd13724b_g395h']:
         return waves2, smart.utils.interpolations.quintilinear_interpolation(np.log10(teff), logg, metal, np.log10(kzz), co, Points)
+    elif modelset.lower() == 'phoenix-newera-aces-cond-2023':
+        return waves2, smart.utils.interpolations.quintilinear_interpolation(np.log10(teff), logg, metal, alpha, np.log10(kzz), Points)
     elif modelset.lower() == 'sonora-2024':
         return waves2, smart.utils.interpolations.quadlinear_interpolation(np.log10(teff), logg, metal, fsed, Points)
     else:

@@ -10,6 +10,7 @@ ModelSets = {
     'phoenix-aces-agss-cond-2011' : 'PHOENIX_ACES_AGSS_COND_2011',
     'phoenix-btsettl-cifist2011' : 'PHOENIX_BTSETTL_CIFIST2011',
     'phoenix-btsettl-cifist2011-2015' : 'PHOENIX_BTSETTL_CIFIST2011_2015',
+    'phoenix-newera-aces-cond-2023' : 'PHOENIX_NEWERA_ACES_COND_2023',
     'phoenix-bt-dusty' : 'PHOENIX_BT_DUSTY',
     'drift-phoenix' : 'DRIFT_PHOENIX',
     'marcs-apogee-dr15' : 'MARCS_APOGEE_DR15',
@@ -20,7 +21,6 @@ ModelSets = {
     'atmo-2020-neq-strong' : 'ATMO_2020_NEQ_STRONG',
     'atmo-2020-neq-weak' : 'ATMO_2020_NEQ_WEAK',
     'barman-20230830' : 'BARMAN_20230830',
-    'pheonix-newera-aces-cond-2023' : 'PHOENIX_NEWERA_ACES_COND_2023',
     'hd206893-qkbbhires': 'HD206893_QKBBHIRES',
     'sonora-2018' : 'SONORA_2018', # bobcat
     'sonora-2021' : 'SONORA_2021', # cholla
