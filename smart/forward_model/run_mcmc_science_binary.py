@@ -12,6 +12,7 @@ from multiprocessing import Pool
 import smart
 import model_fit
 import mcmc_utils
+import model_limits
 import corner
 import os
 import sys
@@ -296,88 +297,50 @@ else: logg_max = 5.5
 # limit of the flux nuisance parameter: 5 percent of the median flux
 A_const       = 0.05 * abs(np.nanmedian(data.flux))
 
-if modelset == 'btsettl08':
-	limits         = { 
-						'teff_min':max(priors['teff_min']-300,500),  'teff_max':min(priors['teff_max']+300,3500),
-						'logg_min':3.5,                              'logg_max':logg_max,
-						'vsini_min':0.0,                             'vsini_max':100.0,
-						'rv_min':-200.0,                             'rv_max':200.0,
-						'teff2_min':max(priors['teff2_min']-300,500),'teff2_max':min(priors['teff2_max']+300,3500),
-						'logg2_min':3.5,                             'logg2_max':logg_max,
-						'vsini2_min':0.0,                            'vsini2_max':100.0,
-						'rv2_min':-200.0,                            'rv2_max':200.0,	
-						'am_min':1.0,                                'am_max':3.0,
-						'pwv_min':0.5,                            	 'pwv_max':20.0,
-						'A_min':-A_const,							 'A_max':A_const,
-						'B_min':-0.6,                              	 'B_max':0.6,
-						'N_min':0.10,                                'N_max':5.0,	
-						'flux_scale_min':0.1,                        'flux_scale_max':1.0,		
-					}
+# Get model limits from the centralized model_limits module
+limits = model_limits.get_model_limits(modelset, priors, logg_max, A_const=A_const, N_max=5.0)
 
-elif modelset == 'sonora':
-	limits         = { 
-						'teff_min':max(priors['teff_min']-300,200),  'teff_max':min(priors['teff_max']+300,2400),
-						'logg_min':3.5,                              'logg_max':logg_max,
-						'vsini_min':0.0,                             'vsini_max':100.0,
-						'rv_min':-200.0,                             'rv_max':200.0,
-						'am_min':1.0,                                'am_max':3.0,
-						'pwv_min':0.5,                            	 'pwv_max':20.0,
-						'A_min':-A_const,							 'A_max':A_const,
-						'B_min':-0.6,                              	 'B_max':0.6,
-						'N_min':0.10,                                'N_max':5.0,
-						'teff2_min':max(priors['teff2_min']-300,200),'teff2_max':min(priors['teff2_max']+300,2400),
-						'logg2_min':3.5,                             'logg2_max':logg_max,
-						'vsini2_min':0.0,                            'vsini2_max':100.0,
-						'rv2_min':-200.0,                            'rv2_max':200.0,	
-						'flux_scale_min':0.1,                        'flux_scale_max':1.0,
-					}
+# Binary-specific: Add limits for the second star
+if limits is not None:
+	# Determine teff limits for second star based on modelset
+	if modelset == 'btsettl08':
+		limits['teff2_min'] = max(priors['teff2_min'] - 300, 500)
+		limits['teff2_max'] = min(priors['teff2_max'] + 300, 3500)
+	elif modelset == 'sonora':
+		limits['teff2_min'] = max(priors['teff2_min'] - 300, 200)
+		limits['teff2_max'] = min(priors['teff2_max'] + 300, 2400)
+	elif modelset == 'phoenixaces':
+		limits['teff2_min'] = max(priors['teff2_min'] - 300, 2300)
+		limits['teff2_max'] = min(priors['teff2_max'] + 300, 10000)
+	elif modelset.upper() == 'PHOENIX_BTSETTL_CIFIST2011_2015':
+		limits['teff2_min'] = max(priors['teff2_min'] - 300, 2300)
+		limits['teff2_max'] = min(priors['teff2_max'] + 300, 7000)
+	else:
+		# Default for unknown modelsets
+		limits['teff2_min'] = max(priors.get('teff2_min', 500) - 300, 500)
+		limits['teff2_max'] = min(priors.get('teff2_max', 3000) + 300, 3500)
+	
+	# Add common binary star parameters
+	limits['logg2_min'] = 3.5
+	limits['logg2_max'] = logg_max
+	limits['vsini2_min'] = 0.0
+	limits['vsini2_max'] = 100.0
+	limits['rv2_min'] = -200.0
+	limits['rv2_max'] = 200.0
+	limits['flux_scale_min'] = 0.1
+	limits['flux_scale_max'] = 1.0
 
-elif modelset == 'phoenixaces':
-	limits         = { 
-						'teff_min':max(priors['teff_min']-300,2300),  'teff_max':min(priors['teff_max']+300,10000),
-						'logg_min':3.5,                               'logg_max':logg_max,
-						'vsini_min':0.0,                              'vsini_max':100.0,
-						'rv_min':-200.0,                              'rv_max':200.0,
-						'am_min':1.0,                                 'am_max':3.0,
-						'pwv_min':0.5,                            	  'pwv_max':20.0,
-						'A_min':-A_const,							  'A_max':A_const,
-						'B_min':-0.6,								  'B_max':0.6,
-						'N_min':0.10,                                 'N_max':5.50,
-						'teff2_min':max(priors['teff2_min']-300,2300),'teff2_max':min(priors['teff2_max']+300,10000),
-						'logg2_min':3.5,                              'logg2_max':logg_max,
-						'vsini2_min':0.0,                             'vsini2_max':100.0,
-						'rv2_min':-200.0,                             'rv2_max':200.0,	
-						'flux_scale_min':0.1,                         'flux_scale_max':1.0,
-					}
+# Update limits for instrument-specific requirements
+limits = model_limits.update_limits_for_instrument(limits, data.instrument)
 
-elif modelset.upper() == 'PHOENIX_BTSETTL_CIFIST2011_2015':
-	limits         = { 
-						'teff_min':max(priors['teff_min']-300,2300),  'teff_max':min(priors['teff_max']+300,7000),
-						'logg_min':3.5,                               'logg_max':logg_max,
-						'vsini_min':0.0,                              'vsini_max':100.0,
-						'rv_min':-200.0,                              'rv_max':200.0,
-						'am_min':1.0,                                 'am_max':3.0,
-						'pwv_min':0.5,                            	  'pwv_max':20.0,
-						'A_min':-A_const,							  'A_max':A_const,
-						'B_min':-0.6,								  'B_max':0.6,
-						'N_min':0.10,                                 'N_max':5.50,
-						'teff2_min':max(priors['teff2_min']-300,2300),'teff2_max':min(priors['teff2_max']+300,7000),
-						'logg2_min':3.5,                              'logg2_max':logg_max,
-						'vsini2_min':0.0,                             'vsini2_max':100.0,
-						'rv2_min':-200.0,                             'rv2_max':200.0,	
-						'flux_scale_min':0.1,                         'flux_scale_max':1.0,
-					}
-
-# HIRES wavelength calibration is not that precise, release the constraint for the wavelength offset nuisance parameter
-if data.instrument == 'hires':
-	limits['B_min'] = -3.0 # Angstrom
-	limits['B_max'] = +3.0 # Angstrom
-
-if final_mcmc:
-	limits['rv_min']  = priors['rv_min'] - 10
-	limits['rv_max']  = priors['rv_max'] + 10
-	limits['rv2_min'] = priors['rv2_min'] - 10
-	limits['rv2_max'] = priors['rv2_max'] + 10
+# Update limits for final MCMC if needed (binary-specific RV updates)
+if final_mcmc and limits is not None:
+	if 'rv_min' in priors and 'rv_max' in priors:
+		limits['rv_min'] = priors['rv_min'] - 10
+		limits['rv_max'] = priors['rv_max'] + 10
+	if 'rv2_min' in priors and 'rv2_max' in priors:
+		limits['rv2_min'] = priors['rv2_min'] - 10
+		limits['rv2_max'] = priors['rv2_max'] + 10
 
 ## apply a custom mask
 data.mask_custom(custom_mask=custom_mask)
