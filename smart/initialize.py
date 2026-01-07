@@ -27,7 +27,8 @@ ModelSets = {
     'sonora-2023' : 'SONORA_2023', # elfowl
     'sonora-2024' : 'SONORA_2024',  # diamondback
     'sonora-2025' : 'SONORA_2025',  # elfowl v2
-    'hd13724b_g395h' : 'HD13724B_G395H'  # SONORA minigrid
+    'hd13724b_g395h' : 'HD13724B_G395H',  # SONORA minigrid
+    'flameskimmer' : 'FLAMESKIMMER'  # flameskimmer
 }
 
 def getModelgrid(modelset = 'phoenix-aces-agss-cond-2011'):
