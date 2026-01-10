@@ -12,6 +12,7 @@ from multiprocessing import Pool, set_start_method
 import smart
 import model_fit
 import mcmc_utils
+import model_limits
 import corner
 import os
 import sys
@@ -309,66 +310,26 @@ else: logg_max = 5.5
 # limit of the flux nuisance parameter: 5 percent of the median flux
 A_const       = 0.05 * abs(np.median(data.flux))
 
-if 'btsettl08' in modelset.lower():
-	limits         = { 
-						'teff_min':max(priors['teff_min']-300,500), 'teff_max':min(priors['teff_max']+300,3500),
-						'logg_min':3.5,                             'logg_max':logg_max,
-						'vsini_min':0.0,                            'vsini_max':200.0,
-						'rv_min':-200.0,                            'rv_max':200.0,
-						'am_min':1.0,                               'am_max':3.0,
-						'pwv_min':0.5,                            	'pwv_max':20.0,
-						'A_min':-1000,								'A_max':1000,
-						'B_min':-5,                              	'B_max':5,
-						'N_min':0.10,                               'N_max':5.0 				
-					}
+# Get model limits from the centralized model_limits module
+# IGRINS-specific: use N_max=5.0
+limits = model_limits.get_model_limits(modelset, priors, logg_max, A_const=A_const, N_max=5.0)
 
-elif modelset == 'sonora':
-	limits         = { 
-						'teff_min':max(priors['teff_min']-300,200), 'teff_max':min(priors['teff_max']+300,2400),
-						'logg_min':3.5,                             'logg_max':logg_max,
-						'vsini_min':0.0,                            'vsini_max':100.0,
-						'rv_min':-200.0,                            'rv_max':200.0,
-						'am_min':1.0,                               'am_max':3.0,
-						'pwv_min':0.5,                            	'pwv_max':20.0,
-						'A_min':-A_const,							'A_max':A_const,
-						'B_min':-0.6,                              	'B_max':0.6,
-						'N_min':0.10,                               'N_max':5.0 				
-					}
+# IGRINS-specific limit overrides
+if limits is not None and 'btsettl08' in modelset.lower():
+	# IGRINS has different requirements than other instruments
+	limits['teff_max'] = min(priors['teff_max'] + 300, 3500)  # Lower teff_max for IGRINS
+	limits['vsini_max'] = 200.0  # Higher vsini_max for IGRINS
+	limits['A_min'] = -1000
+	limits['A_max'] = 1000
+	limits['B_min'] = -5
+	limits['B_max'] = 5
 
-elif modelset == 'phoenixaces':
-	limits         = { 
-						'teff_min':max(priors['teff_min']-300,2300), 'teff_max':min(priors['teff_max']+300,10000),
-						'logg_min':3.5,                             'logg_max':logg_max,
-						'vsini_min':0.0,                            'vsini_max':100.0,
-						'rv_min':-200.0,                            'rv_max':200.0,
-						'am_min':1.0,                               'am_max':3.0,
-						'pwv_min':0.5,                            	'pwv_max':20.0,
-						'A_min':-A_const,							'A_max':A_const,
-						'B_min':-0.6,								'B_max':0.6,
-						'N_min':0.10,                               'N_max':5.50 				
-					}
+# Update limits for instrument-specific requirements
+limits = model_limits.update_limits_for_instrument(limits, data.instrument)
 
-elif modelset.upper() == 'PHOENIX_BTSETTL_CIFIST2011_2015':
-	limits         = { 
-						'teff_min':max(priors['teff_min']-300,2300), 'teff_max':min(priors['teff_max']+300,7000),
-						'logg_min':3.5,                             'logg_max':logg_max,
-						'vsini_min':0.0,                            'vsini_max':100.0,
-						'rv_min':-200.0,                            'rv_max':200.0,
-						'am_min':1.0,                               'am_max':3.0,
-						'pwv_min':0.5,                            	'pwv_max':20.0,
-						'A_min':-A_const,							'A_max':A_const,
-						'B_min':-0.6,								'B_max':0.6,
-						'N_min':0.10,                               'N_max':5.50 				
-					}
-
-# HIRES wavelength calibration is not that precise, release the constraint for the wavelength offset nuisance parameter
-if data.instrument.lower() == 'hires':
-	limits['B_min'] = -3.0 # Angstrom
-	limits['B_max'] = +3.0 # Angstrom
-
+# Update limits for final MCMC if needed
 if final_mcmc:
-	limits['rv_min'] = priors['rv_min'] - 10
-	limits['rv_max'] = priors['rv_max'] + 10
+	limits = model_limits.update_limits_for_final_mcmc(limits, priors)
 
 ## apply a custom mask
 data.mask_custom(custom_mask=custom_mask)
