@@ -104,7 +104,7 @@ def makeModel(teff, logg=5, metal=0, vsini=1, rv=0, tell_alpha=1.0, airmass=1.0,
 
 	output_stellar_model = kwargs.get('output_stellar_model', False)
 	
-	if data is not None and instrument.lower() in ['nirspec', 'hires', 'igrins']:
+	if data is not None and instrument.lower() in ['nirspec', 'hires', 'igrins', 'igrins2']:
 		
 		order = data.order
 		# read in a model

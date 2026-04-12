@@ -1358,7 +1358,7 @@ def run_wave_cal(data_name, data_path, order_list,
 
 		# get an estimate for lsf and telluric alpha
 		#if apply_sigma_mask:
-		lsf   = smart.getLSF(telluric_new, continuum=False)
+		lsf   = smart.getLSF(telluric_new, continuum=False, instrument=instrument)
 		#else:
 		#	lsf   = smart.getLSF(telluric_new)#, continuum=False)
 		#lsf   = smart.getLSF2(telluric_new)#, continuum=False)

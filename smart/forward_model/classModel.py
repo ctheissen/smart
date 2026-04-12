@@ -86,13 +86,15 @@ class Model():
             self.wave   = kwargs.get('wave', [])
             self.flux   = kwargs.get('flux', [])
 
-        elif (self.order != None) and (self.instrument.lower() in ['nirspec', 'hires', 'igrins']):
+        elif (self.order != None) and (self.instrument.lower() in ['nirspec', 'hires', 'igrins', 'igrins2']):
 
             self.teff     = kwargs.get('teff', 2500)
             self.logg     = kwargs.get('logg', 5.00)
             self.metal    = kwargs.get('metal', 0.00)
             self.en       = kwargs.get('en', 0.00)
             self.modelset = kwargs.get('modelset', 'btsettl08')
+
+            if self.instrument.lower() == 'igrins2': self.instrument = 'igrins' # small fix since they are the same models
 
             wave, flux = smart.forward_model.InterpolateModel.InterpModel(self.teff, self.logg, self.metal, self.en,
                                                                           modelset=self.modelset, order=self.order, instrument=self.instrument)

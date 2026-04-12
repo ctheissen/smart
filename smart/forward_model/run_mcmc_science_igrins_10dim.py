@@ -1,11 +1,12 @@
 import pandas as pd
 import numpy as np
 import matplotlib
-#matplotlib.use('Agg')
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-#plt.ioff()
+plt.ioff()
 import matplotlib.gridspec as gridspec
 from astropy.io import fits
+from astropy.time import Time
 import emcee
 #from schwimmbad import MPIPool
 from multiprocessing import Pool, set_start_method
@@ -60,9 +61,6 @@ parser.add_argument("save_to_path",type=str,
 parser.add_argument("lsf",type=float,
     default=None, help="line spread function", nargs="+")
 
-parser.add_argument("-instrument",metavar='--inst',type=str,
-    default='nirspec', help="spectrometer name of the instrument; default nirspec")
-
 parser.add_argument("-outlier_rejection",metavar='--rej',type=float,
     default=3.0, help="outlier rejection based on the multiple of standard deviation of the residual; default 3.0")
 
@@ -93,7 +91,7 @@ parser.add_argument("-pixel_end",type=int,
 #parser.add_argument("-alpha_tell",type=float,
 #    default=1.0, help="telluric alpha; default 1.0")
 
-parser.add_argument("-apply_sigma_mask",type=bool,
+parser.add_argument("-applymask",type=bool,
     default=False, help="apply a simple mask based on the STD of the average flux; default is False")
 
 parser.add_argument("-plot_show",type=bool,
@@ -105,8 +103,11 @@ parser.add_argument("-coadd",type=bool,
 parser.add_argument("-coadd_sp_name",type=str,
     default=None, help="name of the coadded spectra")
 
-parser.add_argument("-modelset",type=str,
+parser.add_argument("-modelset", type=str,
     default='btsettl08', help="model set; default is btsettl08")
+
+parser.add_argument("-instrument", type=str,
+    default='nirspec', help="Specify the instrument; defulat is nirspec; options: nirspec, igrins")
 
 parser.add_argument("-final_mcmc", action='store_true', help="run final mcmc; default False")
 
@@ -129,8 +130,9 @@ lsf                    = float(args.lsf[0])
 ndim, nwalkers, step   = int(args.ndim), int(args.nwalkers), int(args.step)
 burn                   = int(args.burn)
 moves                  = float(args.moves)
-apply_sigma_mask              = args.apply_sigma_mask
+applymask              = args.applymask
 pixel_start, pixel_end = int(args.pixel_start), int(args.pixel_end)
+
 #pwv                    = float(args.pwv)
 #alpha_tell             = float(args.alpha_tell[0])
 plot_show              = args.plot_show
@@ -153,20 +155,31 @@ now       = datetime.now()
 dt_string = now.strftime("%H:%M:%S")	
 
 #####################################
+if 'igrins' in instrument.lower():			
 
-data        = smart.Spectrum(name=sci_data_name, order=order, path=data_path, apply_sigma_mask=apply_sigma_mask, instrument=instrument)
+	if order < 98: band = 'K'
+	else: band = 'H'
+	
+	if instrument.lower() == 'igrins2':
+		tell_data_name2 = tell_data_name + '_%s_calibrated'%band
+	else:
+		tell_data_name2 = tell_data_name + '_calibrated'
 
-if instrument.lower() != 'hires':
+	data        = smart.Spectrum(name=sci_data_name, name2=tell_data_name2, order=order, path=data_path, tell_path=tell_path, applymask=applymask, instrument=instrument, spec_a0v=True)
+	#tell_sp     = smart.Spectrum(name=tell_data_name2, name2=tell_data_name2, order=data.order, path=tell_path, tell_path=tell_path, applymask=applymask, instrument=instrument, flat_tell=True)
+	tell_sp     = smart.Spectrum(name=tell_data_name2, name2=tell_data_name2, order=data.order, tell_path=tell_path, applymask=applymask, instrument=instrument, flat_tell=True, wavecal=True)
+
+if instrument.lower() == 'nirspec':
+	data        = smart.Spectrum(name=sci_data_name, order=order, path=data_path, applymask=applymask, instrument=instrument)
 	tell_data_name2 = tell_data_name + '_calibrated'
-	tell_sp     = smart.Spectrum(name=tell_data_name2, order=data.order, path=tell_path, apply_sigma_mask=apply_sigma_mask, instrument=instrument)
+	tell_sp     = smart.Spectrum(name=tell_data_name2, order=data.order, path=tell_path, applymask=applymask, instrument=instrument)
 
-	# TBD if the improved wavecal for KPIC data is possible
-	if instrument.lower() != 'kpic':
-		data.updateWaveSol(tell_sp)
+	data.updateWaveSol(tell_sp)
+
 
 # MJD for logging
 # upgraded NIRSPEC
-if instrument.lower() in ['nirspec', 'kpic']:
+if instrument.lower() == 'nirspec':
 	if len(data.oriWave) == 2048:
 		mjd = data.header['MJD']
 	# old NIRSPEC
@@ -176,12 +189,18 @@ if instrument.lower() in ['nirspec', 'kpic']:
 elif instrument.lower() == 'hires':
 	mjd = data.header['MJD']
 
+elif instrument.lower() == 'igrins':
+	mjd = data.header['MJD-OBS']
+
+elif instrument.lower() == 'igrins2':
+	mjd = Time(data.header['DATE-OBS']).mjd
+
 if coadd:
 	sci_data_name2 = str(args.coadd_sp_name)
 	if not os.path.exists(save_to_path):
 		os.makedirs(save_to_path)
 	data1       = copy.deepcopy(data)
-	data2       = smart.Spectrum(name=sci_data_name2, order=order, path=data_path, apply_sigma_mask=apply_sigma_mask)
+	data2       = smart.Spectrum(name=sci_data_name2, order=order, path=data_path, applymask=applymask)
 	data.coadd(data2, method='pixel')
 
 	plt.figure(figsize=(16,6))
@@ -204,7 +223,7 @@ if coadd:
 
 sci_data  = data
 
-if instrument != 'hires':
+if instrument.lower() in ['nirspec', 'igrins', 'igrins2']:
 	tell_data = tell_sp 
 
 """
@@ -271,11 +290,9 @@ else:
 
 data          = copy.deepcopy(sci_data)
 
-if instrument.lower() != 'hires':
+if instrument.lower() == 'nirspec':
 	tell_sp       = copy.deepcopy(tell_data)
-	
-	if instrument.lower() != 'kpic':
-		data.updateWaveSol(tell_sp)
+	data.updateWaveSol(tell_sp)
 
 # barycentric corrction
 #barycorr      = smart.barycorr(data.header).value
@@ -283,96 +300,77 @@ if instrument.lower() != 'hires':
 
 ## read the input custom mask and priors
 lines          = open(save_to_path+'/mcmc_parameters.txt').read().splitlines()
-if instrument.lower() in ['nirspec', 'kpic']:
+if instrument.lower() == 'nirspec':
 	custom_mask    = json.loads(lines[5].split('custom_mask')[1])
 	priors         = ast.literal_eval(lines[6].split('priors ')[1])
-	if include_fringe_model:
-		fringe_param   = ast.literal_eval(lines[7].split('fringe ')[1])
-		barycorr       = json.loads(lines[14].split('barycorr')[1])
-		print('fringe_param', fringe_param)
-	else:
-		barycorr       = json.loads(lines[13].split('barycorr')[1])
+	barycorr       = json.loads(lines[13].split('barycorr')[1])
 elif instrument.lower() == 'hires':
 	custom_mask    = json.loads(lines[3].split('custom_mask')[1])
 	priors         = ast.literal_eval(lines[4].split('priors ')[1])
 	barycorr       = json.loads(lines[11].split('barycorr')[1])
-
-# read the pre-determined fringe parameters
-if include_fringe_model:
-	A1=float(fringe_param['A1']) 
-	A2=float(fringe_param['A2']) 
-	A3=float(fringe_param['A3']) 
-	Dos1=float(fringe_param['Dos1']) 
-	Dos2=float(fringe_param['Dos2']) 
-	Dos3=float(fringe_param['Dos3']) 
-	R1=float(fringe_param['R1'])
-	R2=float(fringe_param['R2'])
-	R3=float(fringe_param['R3'])
-	phi1=float(fringe_param['phi1'])
-	phi2=float(fringe_param['phi2']) 
-	phi3=float(fringe_param['phi3'])
-
-	print(A1, Dos1, R1, phi1)
-	print(A2, Dos2, R2, phi2)
-	print(A3, Dos3, R3, phi3)
-
+elif 'igrins' in instrument.lower():
+	custom_mask    = json.loads(lines[5].split('custom_mask')[1])
+	print('custom_mask', custom_mask)
+	print('1', lines)
+	print('2', lines[6])
+	print('3', lines[6].split('priors '))
+	print('4', lines[6].split('priors ')[1])
+	print('5', type(lines[6].split('priors ')[1]))
+	priors         = ast.literal_eval(lines[6].split('priors ')[1])
+	barycorr       = json.loads(lines[13].split('barycorr')[1])
 
 # no logg 5.5 for teff lower than 900
-if 'btsettl08' in modelset.lower() and priors['teff_min'] < 900: logg_max = 5.0
-else: logg_max = 5.5
-
-## apply a custom mask
-data.mask_custom(custom_mask=custom_mask)
+if 'btsettl08' in modelset.lower() and priors['teff_min'] < 900: 
+	logg_max = 5.0
+else: 
+	logg_max = 5.5
 
 # limit of the flux nuisance parameter: 5 percent of the median flux
 A_const       = 0.05 * abs(np.median(data.flux))
 
-# KPIC DRP has underestimated noise (no read/dark current noise)
-if instrument.lower() == 'kpic':
-	N_max = 20.0
-else:
-	N_max = 20.0
-
 if 'btsettl08' in modelset.lower():
 	limits         = { 
-						'teff_min':max(priors['teff_min']-300,500), 'teff_max':min(priors['teff_max']+300,6000),
+						'teff_min':max(priors['teff_min']-300,500), 'teff_max':min(priors['teff_max']+300,3500),
 						'logg_min':3.5,                             'logg_max':logg_max,
-						'vsini_min':0.0,                            'vsini_max':100.0,
+						'metal_min':-0.5,                           'metal_max':0.5,
+						'vsini_min':0.0,                            'vsini_max':200.0,
 						'rv_min':-200.0,                            'rv_max':200.0,
 						'am_min':1.0,                               'am_max':3.0,
 						'pwv_min':0.5,                            	'pwv_max':20.0,
-						'A_min':-5,							        'A_max':5,
-						'B_min':-0.6,                              	'B_max':0.6,
-						'N_min':0.10,                               'N_max':N_max 				
+						'A_min':-1000,								'A_max':1000,
+						'B_min':-5,                              	'B_max':5,
+						'N_min':0.10,                               'N_max':5.0 				
 					}
 
 elif modelset.lower() == 'sonora':
 	limits         = { 
 						'teff_min':max(priors['teff_min']-300,200), 'teff_max':min(priors['teff_max']+300,2400),
 						'logg_min':3.5,                             'logg_max':logg_max,
+						'metal_min':-4.,                            'metal_max':1.,
 						'vsini_min':0.0,                            'vsini_max':100.0,
 						'rv_min':-200.0,                            'rv_max':200.0,
 						'am_min':1.0,                               'am_max':3.0,
 						'pwv_min':0.5,                            	'pwv_max':20.0,
 						'A_min':-A_const,							'A_max':A_const,
 						'B_min':-0.6,                              	'B_max':0.6,
-						'N_min':0.10,                               'N_max':N_max 				
+						'N_min':0.10,                               'N_max':5.0 				
 					}
 
-elif modelset.lower() == 'phoenixaces':
+elif modelset.lower() == 'phoenix-aces-agss-cond-2011':
 	limits         = { 
 						'teff_min':max(priors['teff_min']-300,2300), 'teff_max':min(priors['teff_max']+300,10000),
 						'logg_min':3.5,                             'logg_max':logg_max,
+						'metal_min':-4.,                            'metal_max':1.,
 						'vsini_min':0.0,                            'vsini_max':100.0,
 						'rv_min':-200.0,                            'rv_max':200.0,
 						'am_min':1.0,                               'am_max':3.0,
 						'pwv_min':0.5,                            	'pwv_max':20.0,
-						'A_min':-A_const,							'A_max':A_const,
-						'B_min':-0.6,								'B_max':0.6,
-						'N_min':0.10,                               'N_max':N_max 				
+						'A_min':-1000,							    'A_max':1000,
+						'B_min':-5,								    'B_max':5,
+						'N_min':0.10,                               'N_max':5.50 				
 					}
 
-elif (modelset.upper() == 'PHOENIX-BTSETTL-CIFIST2011-2015') or (modelset.upper() == 'PHOENIX_BTSETTL_CIFIST2011_2015'):
+elif modelset.upper() == 'PHOENIX_BTSETTL_CIFIST2011_2015':
 	limits         = { 
 						'teff_min':max(priors['teff_min']-300,2300), 'teff_max':min(priors['teff_max']+300,7000),
 						'logg_min':3.5,                             'logg_max':logg_max,
@@ -382,11 +380,11 @@ elif (modelset.upper() == 'PHOENIX-BTSETTL-CIFIST2011-2015') or (modelset.upper(
 						'pwv_min':0.5,                            	'pwv_max':20.0,
 						'A_min':-A_const,							'A_max':A_const,
 						'B_min':-0.6,								'B_max':0.6,
-						'N_min':0.10,                               'N_max':N_max				
+						'N_min':0.10,                               'N_max':5.50 				
 					}
 
 # HIRES wavelength calibration is not that precise, release the constraint for the wavelength offset nuisance parameter
-if data.instrument == 'hires':
+if data.instrument.lower() == 'hires':
 	limits['B_min'] = -3.0 # Angstrom
 	limits['B_max'] = +3.0 # Angstrom
 
@@ -394,14 +392,12 @@ if final_mcmc:
 	limits['rv_min'] = priors['rv_min'] - 10
 	limits['rv_max'] = priors['rv_max'] + 10
 
-## add a pixel label for plotting
-length1    = len(data.oriWave)
-pixel      = np.arange(len(data.wave))
-pixel_drop = np.copy(pixel)
-pixel_drop = np.delete(pixel_drop, pixel[pixel_start: pixel_end]).tolist()
+## apply a custom mask
+data.mask_custom(custom_mask=custom_mask)
 
-#pixel       = np.delete(np.arange(length1), data.mask)
-'''
+## add a pixel label for plotting
+length1     = len(data.oriWave)
+pixel       = np.delete(np.arange(length1), data.mask)
 pixel       = pixel[pixel_start:pixel_end]
 
 ### mask the end pixels
@@ -409,17 +405,18 @@ data.wave     = data.wave[pixel_start:pixel_end]
 data.flux     = data.flux[pixel_start:pixel_end]
 data.noise    = data.noise[pixel_start:pixel_end]
 
-if instrument.lower() != 'hires':
+if instrument.lower() == 'nirspec':
 	tell_sp.wave  = tell_sp.wave[pixel_start:pixel_end]
 	tell_sp.flux  = tell_sp.flux[pixel_start:pixel_end]
 	tell_sp.noise = tell_sp.noise[pixel_start:pixel_end]
-'''
+
 #if final_mcmc:
 #	priors, limits         = mcmc_utils.generate_final_priors_and_limits(sp_type=sp_type, barycorr=barycorr, save_to_path1=save_to_path1)
 #else:
 #	priors, limits         = mcmc_utils.generate_initial_priors_and_limits(sp_type=sp_type)
 #print(priors, limits)
 
+print("LSF: ", lsf)
 if lsf is None:
 	lsf           = smart.getLSF(tell_sp, alpha=alpha_tell, test=True, save_path=save_to_path)
 #	print("LSF: ", lsf)
@@ -472,40 +469,51 @@ def lnlike(theta, data, lsf):
 	"""
 
 	## Parameters MCMC
-	#print(theta)
-	teff, logg, vsini, rv, am, pwv, A, B, N = theta #N noise prefactor
+	teff, logg, metal, vsini, rv, am, pwv, A, B, N = theta #N noise prefactor
 	#teff, logg, vsini, rv, , am, pwv, A, B, freq, amp, phase = theta
-	#print('%s,%s,%s,%s,%s,%s,%s,%s,%s'%(teff, logg, vsini, rv, am, pwv, A, B, N))
+	#print(teff, logg, vsini, rv, am, pwv, A, B, N)
+	#print(lsf)
 
-	if include_fringe_model:
-		model = model_fit.makeModel(teff=teff, logg=logg, metal=0.0, vsini=vsini, rv=rv, tell_alpha=1.0, wave_offset=B, flux_offset=A,
-			lsf=lsf, order=str(data.order), data=data, modelset=modelset, airmass=am, pwv=pwv, include_fringe_model=include_fringe_model, instrument=instrument,
-			A1=A1, A2=A2, A3=A3, Dos1=Dos1, Dos2=Dos2, Dos3=Dos3, R1=R1, R2=R2, R3=R3, phi1=phi1, phi2=phi2, phi3=phi3)
-	else:
-		model = model_fit.makeModel(teff=teff, logg=logg, metal=0.0, vsini=vsini, rv=rv, tell_alpha=1.0, wave_offset=B, flux_offset=A,
-			lsf=lsf, order=str(data.order), data=data, modelset=modelset, airmass=am, pwv=pwv, include_fringe_model=include_fringe_model, instrument=instrument)
+	model = smart.makeModel(teff=teff, logg=logg, metal=metal, vsini=vsini, rv=rv, tell_alpha=1.0, wave_offset=B, flux_offset=A,
+		lsf=lsf, order=str(data.order), data=data, modelset=modelset, airmass=am, pwv=pwv, include_fringe_model=include_fringe_model, instrument=instrument)
+	
+	#print('1')
+	#plt.figure(111111)
+	#plt.plot(data.wave, data.flux, label='data')
+	#plt.plot(model.wave, model.flux, label='model')
+	#plt.plot(data.wave, data.noise, label='noise')
+	#plt.legend()
+	#plt.savefig('MCMC_test_figure.png')
+	#print('2')
+	#plt.show()
+	#plt.pause(0.5)
 
-
+	
 	chisquare = smart.chisquare(data, model)/N**2
-	'''
-	print(-0.5 * (chisquare + np.sum(np.log(2*np.pi*(data.noise*N)**2))))
-	plt.figure(1)
-	plt.plot(data.wave, data.flux, label='data')
-	plt.plot(model.wave, model.flux, label='model')
-	plt.pause(0.2)
-	plt.close()
-	'''
-	return -0.5 * (chisquare + np.sum(np.log(2*np.pi*(data.noise*N)**2)))
+	#print(-0.5 * (chisquare + np.nansum(np.log(2*np.pi*(data.noise*N)**2))))
+
+	return -0.5 * (chisquare + np.nansum(np.log(2*np.pi*(data.noise*N)**2)))
 
 def lnprior(theta, limits=limits):
 	"""
 	Specifies a flat prior
 	"""
 	## Parameters for theta
-	teff, logg, vsini, rv, am, pwv, A, B, N = theta
+	teff, logg, metal, vsini, rv, am, pwv, A, B, N = theta
+	#print('THETA2', theta)
+	#print(limits['teff_min']  < teff  < limits['teff_max'])
+	#print(limits['logg_min']  < logg  < limits['logg_max'])
+	#print(limits['vsini_min'] < vsini < limits['vsini_max'])
+	#print(limits['rv_min']    < rv    < limits['rv_max'])
+	#print(limits['am_min']    < am    < limits['am_max'])
+	#print(limits['pwv_min']   < pwv   < limits['pwv_max'])
+	#print(limits['A_min']     < A     < limits['A_max'])
+	#print(limits['B_min']     < B     < limits['B_max'])
+	#print(limits['N_min']     < N     < limits['N_max'])
 
 	if  limits['teff_min']  < teff  < limits['teff_max'] \
 	and limits['logg_min']  < logg  < limits['logg_max'] \
+	and limits['metal_min'] < metal < limits['metal_max'] \
 	and limits['vsini_min'] < vsini < limits['vsini_max']\
 	and limits['rv_min']    < rv    < limits['rv_max']   \
 	and limits['am_min']    < am    < limits['am_max']\
@@ -519,42 +527,41 @@ def lnprior(theta, limits=limits):
 
 def lnprob(theta, data, lsf):
 
-	#print(theta)
-		
+	#print('THETA', theta)
+
 	lnp = lnprior(theta)
-		
+
+	#print('LNP', lnp)
+
 	if not np.isfinite(lnp):
 		return -np.inf
 		
 	return lnp + lnlike(theta, data, lsf)
 
-pos = [np.array([	priors['teff_min']  + (priors['teff_max']   - priors['teff_min'] ) * np.random.uniform(), 
-					priors['logg_min']  + (priors['logg_max']   - priors['logg_min'] ) * np.random.uniform(), 
-					priors['vsini_min'] + (priors['vsini_max']  - priors['vsini_min']) * np.random.uniform(),
-					priors['rv_min']    + (priors['rv_max']     - priors['rv_min']   ) * np.random.uniform(), 
-					priors['am_min']    + (priors['am_max']     - priors['am_min'])    * np.random.uniform(),
-					priors['pwv_min']   + (priors['pwv_max']    - priors['pwv_min'])   * np.random.uniform(),
-					priors['A_min']     + (priors['A_max']      - priors['A_min'])     * np.random.uniform(),
-					priors['B_min']     + (priors['B_max']      - priors['B_min'])     * np.random.uniform(),
-					priors['N_min']     + (priors['N_max']      - priors['N_min'])     * np.random.uniform()]) for i in range(nwalkers)]
+pos = [np.array([	priors['teff_min']  + (priors['teff_max']   - priors['teff_min'] )  * np.random.uniform(), 
+					priors['logg_min']  + (priors['logg_max']   - priors['logg_min'] )  * np.random.uniform(), 
+					priors['metal_min'] + (priors['metal_max']  - priors['metal_min'] ) * np.random.uniform(), 
+					priors['vsini_min'] + (priors['vsini_max']  - priors['vsini_min'])  * np.random.uniform(),
+					priors['rv_min']    + (priors['rv_max']     - priors['rv_min']   )  * np.random.uniform(), 
+					priors['am_min']    + (priors['am_max']     - priors['am_min'])     * np.random.uniform(),
+					priors['pwv_min']   + (priors['pwv_max']    - priors['pwv_min'])    * np.random.uniform(),
+					priors['A_min']     + (priors['A_max']      - priors['A_min'])      * np.random.uniform(),
+					priors['B_min']     + (priors['B_max']      - priors['B_min'])      * np.random.uniform(),
+					priors['N_min']     + (priors['N_max']      - priors['N_min'])      * np.random.uniform()]) for i in range(nwalkers)]
 
-'''
-sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, args=(data, lsf), a=moves, moves=emcee.moves.KDEMove())
 time1 = time.time()
-sampler.run_mcmc(pos, step, progress=True)
-time2 = time.time()
-'''
-## multiprocessing
+#sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, args=(data, lsf), a=moves, moves=emcee.moves.KDEMove())
+#sampler.run_mcmc(pos, step, progress=True)
 
+## multiprocessing
 set_start_method('fork')
 with Pool() as pool:
-	#sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, args=(data, lsf), a=moves, pool=pool)
+	#sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, args=(data, lsf, pwv), a=moves, pool=pool)
 	sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, args=(data, lsf), a=moves, pool=pool,
 			moves=emcee.moves.KDEMove())
-	time1 = time.time()
 	sampler.run_mcmc(pos, step, progress=True)
-	time2 = time.time()
 
+time2 = time.time()
 np.save(save_to_path + '/sampler_chain', sampler.chain[:, :, :])
 
 samples = sampler.chain[:, :, :].reshape((-1, ndim))
@@ -572,7 +579,16 @@ print(autocorr_time)
 sampler_chain = np.load(save_to_path + '/sampler_chain.npy')
 samples = np.load(save_to_path + '/samples.npy')
 
-ylabels = ["$T_{\mathrm{eff}} (K)$","$\log{g}$(dex)","$v\sin{i}(km/s)$","$RV(km/s)$","$AM$", "pwv (mm)","$C_{F_{\lambda}}$ (cnt/s)","$C_{\lambda}$($\AA$)","$C_{noise}$"]
+ylabels = ["$T_{\mathrm{eff}} (K)$",
+           "$\log{g}$(dex)",
+           "[M/H]",
+           "$v\sin{i}(km/s)$",
+           "$RV(km/s)$",
+           "$AM$", 
+           "pwv (mm)",
+           "$C_{F_{\lambda}}$ (cnt/s)",
+           "$C_{\lambda}$($\AA$)",
+           "$C_{noise}$"]
 
 
 ## create walker plots
@@ -600,7 +616,7 @@ triangle_samples = sampler_chain[:, burn:, :].reshape((-1, ndim))
 #print(triangle_samples.shape)
 
 # create the final spectra comparison
-teff_mcmc, logg_mcmc, vsini_mcmc, rv_mcmc, am_mcmc, pwv_mcmc, A_mcmc, B_mcmc, N_mcmc = map(lambda v: (v[1], v[2]-v[1], v[1]-v[0]), 
+teff_mcmc, logg_mcmc, metal_mcmc, vsini_mcmc, rv_mcmc, am_mcmc, pwv_mcmc, A_mcmc, B_mcmc, N_mcmc = map(lambda v: (v[1], v[2]-v[1], v[1]-v[0]), 
 	zip(*np.percentile(triangle_samples, [16, 50, 84], axis=0)))
 
 # add the summary to the txt file
@@ -611,6 +627,7 @@ log_path2 = save_to_path + '/mcmc_result.txt'
 file_log2 = open(log_path2,"w+")
 file_log2.write("teff_mcmc {}\n".format(str(teff_mcmc[0])))
 file_log2.write("logg_mcmc {}\n".format(str(logg_mcmc[0])))
+file_log2.write("metal_mcmc {}\n".format(str(metal_mcmc[0])))
 file_log2.write("vsini_mcmc {}\n".format(str(vsini_mcmc[0])))
 file_log2.write("rv_mcmc {}\n".format(str(rv_mcmc[0]+barycorr)))
 file_log2.write("am_mcmc {}\n".format(str(am_mcmc[0])))
@@ -620,6 +637,7 @@ file_log2.write("B_mcmc {}\n".format(str(B_mcmc[0])))
 file_log2.write("N_mcmc {}\n".format(str(N_mcmc[0])))
 file_log2.write("teff_mcmc_e {}\n".format(str(max(abs(teff_mcmc[1]), abs(teff_mcmc[2])))))
 file_log2.write("logg_mcmc_e {}\n".format(str(max(abs(logg_mcmc[1]), abs(logg_mcmc[2])))))
+file_log2.write("metal_mcmc_e {}\n".format(str(max(abs(metal_mcmc[1]), abs(metal_mcmc[2])))))
 file_log2.write("vsini_mcmc_e {}\n".format(str(max(abs(vsini_mcmc[1]), abs(vsini_mcmc[2])))))
 file_log2.write("rv_mcmc_e {}\n".format(str(max(abs(rv_mcmc[1]), abs(rv_mcmc[2])))))
 file_log2.write("am_mcmc_e {}\n".format(str(max(abs(am_mcmc[1]), abs(am_mcmc[2])))))
@@ -631,6 +649,7 @@ file_log2.write("N_mcmc_e {}\n".format(str(max(abs(N_mcmc[1]), abs(N_mcmc[2]))))
 # upper uncertainties
 file_log2.write("teff_mcmc_ue {}\n".format(str(abs(teff_mcmc[1]))))
 file_log2.write("logg_mcmc_ue {}\n".format(str(abs(logg_mcmc[1]))))
+file_log2.write("metal_mcmc_ue {}\n".format(str(abs(metal_mcmc[1]))))
 file_log2.write("vsini_mcmc_ue {}\n".format(str(abs(vsini_mcmc[1]))))
 file_log2.write("rv_mcmc_ue {}\n".format(str(abs(rv_mcmc[1]))))
 file_log2.write("am_mcmc_ue {}\n".format(str(abs(am_mcmc[1]))))
@@ -641,6 +660,7 @@ file_log2.write("N_mcmc_ue {}\n".format(str(abs(N_mcmc[1]))))
 # lower uncertainties
 file_log2.write("teff_mcmc_le {}\n".format(str(abs(teff_mcmc[2]))))
 file_log2.write("logg_mcmc_le {}\n".format(str(abs(logg_mcmc[2]))))
+file_log2.write("metal_mcmc_le {}\n".format(str(abs(metal_mcmc[2]))))
 file_log2.write("vsini_mcmc_le {}\n".format(str(abs(vsini_mcmc[2]))))
 file_log2.write("rv_mcmc_le {}\n".format(str(abs(rv_mcmc[2]))))
 file_log2.write("am_mcmc_le {}\n".format(str(abs(am_mcmc[2]))))
@@ -660,6 +680,7 @@ fig = corner.corner(triangle_samples,
 	labels=ylabels,
 	truths=[teff_mcmc[0], 
 	logg_mcmc[0],
+	metal_mcmc[0],
 	vsini_mcmc[0], 
 	rv_mcmc[0]+barycorr, 
 	am_mcmc[0],
@@ -677,7 +698,7 @@ plt.close()
 
 teff  = teff_mcmc[0]
 logg  = logg_mcmc[0]
-z     = 0.0
+metal = metal_mcmc[0]
 vsini = vsini_mcmc[0]
 rv    = rv_mcmc[0]
 am    = am_mcmc[0]
@@ -686,17 +707,10 @@ A     = A_mcmc[0]
 B     = B_mcmc[0]
 N     = N_mcmc[0]
 
-if include_fringe_model:
-	model, model_notell  = model_fit.makeModel(teff=teff, logg=logg, metal=0.0, 
-		vsini=vsini, rv=rv, tell_alpha=1.0, wave_offset=B, flux_offset=A,
-		lsf=lsf, order=str(data.order), data=data, modelset=modelset, airmass=am, pwv=pwv, 
-		include_fringe_model=include_fringe_model, instrument=instrument, output_stellar_model=True,
-		A1=A1, A2=A2, A3=A3, Dos1=Dos1, Dos2=Dos2, Dos3=Dos3, R1=R1, R2=R2, R3=R3, phi1=phi1, phi2=phi2, phi3=phi3)
-else:
-	model, model_notell = model_fit.makeModel(teff=teff, logg=logg, metal=0.0, 
-		vsini=vsini, rv=rv, tell_alpha=1.0, wave_offset=B, flux_offset=A,
-		lsf=lsf, order=str(data.order), data=data, modelset=modelset, airmass=am, pwv=pwv, output_stellar_model=True, 
-		include_fringe_model=include_fringe_model, instrument=instrument)
+model, model_notell = model_fit.makeModel(teff=teff, logg=logg, metal=metal, 
+	vsini=vsini, rv=rv, tell_alpha=1.0, wave_offset=B, flux_offset=A,
+	lsf=lsf, order=str(data.order), data=data, modelset=modelset, airmass=am, pwv=pwv, output_stellar_model=True, 
+	include_fringe_model=include_fringe_model, instrument=instrument)
 
 fig = plt.figure(figsize=(16,6))
 ax1 = fig.add_subplot(111)
@@ -717,13 +731,16 @@ plt.figtext(0.89,0.85,str(data.header['OBJECT'])+' '+data.name+' O'+str(data.ord
 	horizontalalignment='right',
 	verticalalignment='center',
 	fontsize=15)
-plt.figtext(0.89,0.82,"$Teff \, {0}^{{+{1}}}_{{-{2}}}/ logg \, {3}^{{+{4}}}_{{-{5}}}/ en \, 0.0/ vsini \, {6}^{{+{7}}}_{{-{8}}}/ RV \, {9}^{{+{10}}}_{{-{11}}}$".format(\
+plt.figtext(0.89,0.82,"$Teff \, {0}^{{+{1}}}_{{-{2}}}/ logg \, {3}^{{+{4}}}_{{-{5}}}/ [M/H] \, {6}^{{+{7}}}_{{-{8}}}/ vsini \, {9}^{{+{10}}}_{{-{11}}}/ RV \, {12}^{{+{13}}}_{{-{14}}}$".format(\
 	round(teff_mcmc[0]),
 	round(teff_mcmc[1]),
 	round(teff_mcmc[2]),
 	round(logg_mcmc[0],1),
 	round(logg_mcmc[1],3),
 	round(logg_mcmc[2],3),
+	round(metal_mcmc[0],1),
+	round(metal_mcmc[1],3),
+	round(metal_mcmc[2],3),
 	round(vsini_mcmc[0],2),
 	round(vsini_mcmc[1],2),
 	round(vsini_mcmc[2],2),
@@ -755,6 +772,7 @@ if plot_show:
 	plt.show()
 plt.close()
 
+
 # chi2 and dof in the log
 log_path = save_to_path + '/mcmc_parameters.txt'
 file_log = open(log_path,"a")
@@ -766,6 +784,7 @@ file_log.write("chi2 {} \n".format(round(smart.chisquare(data,model))))
 file_log.write("dof {} \n".format(round(len(data.wave-ndim)/3)))
 file_log.write("teff_mcmc {} K\n".format(str(teff_mcmc)))
 file_log.write("logg_mcmc {} dex (cgs)\n".format(str(logg_mcmc)))
+file_log.write("metal_mcmc {} dex (cgs)\n".format(str(metal_mcmc)))
 file_log.write("vsini_mcmc {} km/s\n".format(str(vsini_mcmc)))
 file_log.write("rv_mcmc {} km/s\n".format(str(rv_mcmc)))
 file_log.write("am_mcmc {}\n".format(str(am_mcmc)))
@@ -785,10 +804,10 @@ file_log.close()
 #							'am','e_am','ue_am','le_am','pwv','e_pwv','ue_pwv','le_pwv',
 #							'cflux','e_cflux','ue_cflux','le_cflux','cwave','e_cwave','ue_cwave','le_cwave',
 #							'cnoise','e_cnoise','ue_cnoise','le_cnoise','wave_cal_err','chi2','dof','acceptance_fraction','autocorr_time'])
-
+#
 
 med_snr      = np.nanmedian(data.flux/data.noise)
-if instrument == 'nirspec':
+if instrument.lower() in ['nirspec', 'igrins', 'igrins2']:
 	wave_cal_err = tell_sp.header['STD']
 else:
 	wave_cal_err = np.nan
@@ -803,6 +822,7 @@ cat = pd.DataFrame({'date_obs':date_obs,'date_name':sci_data_name,'tell_name':te
 					'vsini':vsini_mcmc[0], 'e_vsini':max(vsini_mcmc[1], vsini_mcmc[2]), 'ue_vsini':vsini_mcmc[1], 'le_vsini':vsini_mcmc[2],
 					'teff':teff_mcmc[0], 'e_teff':max(teff_mcmc[1],teff_mcmc[2]), 'ue_teff':teff_mcmc[1], 'le_teff':teff_mcmc[2],
 					'logg':logg_mcmc[0], 'e_logg':max(logg_mcmc[1], logg_mcmc[2]), 'ue_logg':logg_mcmc[1], 'le_logg':logg_mcmc[2],
+					'metal':metal_mcmc[0], 'e_metal':max(metal_mcmc[1], metal_mcmc[2]), 'ue_metal':metal_mcmc[1], 'le_metal':metal_mcmc[2],
 					'am':am_mcmc[0], 'e_am':max(am_mcmc[1], am_mcmc[2]), 'ue_am':am_mcmc[1], 'le_am':am_mcmc[2], 
 					'pwv':pwv_mcmc[0], 'e_pwv':max(pwv_mcmc[1], pwv_mcmc[2]), 'ue_pwv':pwv_mcmc[1], 'le_pwv':pwv_mcmc[2],
 					'cflux':A_mcmc[0], 'e_cflux':max(A_mcmc[1], A_mcmc[2]), 'ue_cflux':A_mcmc[1], 'le_cflux':A_mcmc[2],
