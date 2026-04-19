@@ -13,6 +13,7 @@ from multiprocessing import set_start_method
 import smart
 import model_fit
 import mcmc_utils
+import model_limits
 import corner
 import os
 import sys
@@ -301,88 +302,61 @@ else: logg_max = 5.5
 A_const       = 0.05 * abs(np.median(data.flux))
 A_const       = 100
 
-if 'btsettl08' in modelset.lower():
-	limits         = { 
-						'teff_min':max(priors['teff_min']-300,500), 'teff_max':min(priors['teff_max']+300,3500),
-						'logg_min':3.5,                             'logg_max':logg_max,
-						'vsini_min':0.0,                            'vsini_max':10.0,
-						'rv_min':-1000.0,                           'rv_max':1000.0,
-						'am_min':1.0,                               'am_max':3.0,
-						'pwv_min':0.5,                            	'pwv_max':20.0,
-						'A_min':-50,							    'A_max':50,
-						'B_min':-50,                              	'B_max':50,
-						'N_min':0.10,                               'N_max':10.0,
-						'lsf_min':1,                                'lsf_max':200 				
-					}
+# Get model limits from the centralized model_limits module
+# JWST-specific: use N_max=10.0 (or 2.0 for some modelsets)
+limits = model_limits.get_model_limits(modelset, priors, logg_max, A_const=A_const, N_max=10.0)
 
-elif modelset.lower() == 'phoenix-btsettl-cifist2011-2015':
-	limits         = { 
-						'teff_min':max(priors['teff_min']-300,1200),'teff_max':min(priors['teff_max']+300,3500),
-						'logg_min':3.5,                             'logg_max':logg_max,
-						'vsini_min':0.0,                            'vsini_max':10.0,
-						'rv_min':-1000.0,                           'rv_max':1000.0,
-						'am_min':1.0,                               'am_max':3.0,
-						'pwv_min':0.5,                            	'pwv_max':20.0,
-						'A_min':-50,							    'A_max':50,
-						'B_min':-50,                              	'B_max':50,
-						'N_min':0.10,                               'N_max':10.0,
-						'lsf_min':1,                                'lsf_max':200 				
-					}
+# JWST-specific limit overrides
+if limits is not None:
+	# Most JWST limits need wider RV range and lsf parameters
+	if 'btsettl08' in modelset.lower() or 'sonora' in modelset.lower() or modelset.lower() == 'phoenixaces':
+		limits['rv_min'] = -1000.0
+		limits['rv_max'] = 1000.0
+		# Add lsf limits if not already present
+		if 'lsf_min' not in limits:
+			limits['lsf_min'] = 1
+			limits['lsf_max'] = 200
+	
+	# JWST-specific overrides for btsettl08
+	if 'btsettl08' in modelset.lower():
+		limits['teff_max'] = min(priors['teff_max'] + 300, 3500)
+		limits['vsini_max'] = 10.0
+		limits['A_min'] = -50
+		limits['A_max'] = 50
+		limits['B_min'] = -50
+		limits['B_max'] = 50
+	
+	# JWST-specific overrides for phoenix-btsettl-cifist2011-2015
+	elif modelset.lower() == 'phoenix-btsettl-cifist2011-2015':
+		limits['teff_min'] = max(priors['teff_min'] - 300, 1200)
+		limits['teff_max'] = min(priors['teff_max'] + 300, 3500)
+		limits['vsini_max'] = 10.0
+		limits['A_min'] = -50
+		limits['A_max'] = 50
+		limits['B_min'] = -50
+		limits['B_max'] = 50
+		if 'lsf_min' not in limits:
+			limits['lsf_min'] = 1
+			limits['lsf_max'] = 200
+	
+	# JWST-specific overrides for sonora (not sonora-2024)
+	elif 'sonora' in modelset.lower() and modelset.lower() != 'sonora-2024':
+		limits['vsini_max'] = 10.0
+		limits['A_min'] = -50
+		limits['A_max'] = 50
+		limits['B_min'] = -50
+		limits['B_max'] = 50
+	
+	# sonora-2024 already has correct N_max=2.0 from model_limits
+	if modelset.lower() == 'sonora-2024':
+		limits['N_max'] = 2.0
 
+# Update limits for instrument-specific requirements
+limits = model_limits.update_limits_for_instrument(limits, data.instrument)
 
-elif modelset.lower() == 'sonora-2024':
-	limits         = { 
-						'teff_min':max(priors['teff_min']-300,900), 'teff_max':min(priors['teff_max']+300,2400),
-						'logg_min':3.5,                             'logg_max':5.5,
-						'metal_min':-0.5,                           'metal_max':0.5,
-						'fsed_min':1,                               'fsed_max':20,
-						'vsini_min':0.0,                            'vsini_max':100.0,
-						'rv_min':-1000.0,                           'rv_max':1000.0,
-						'am_min':1.0,                               'am_max':3.0,
-						'pwv_min':0.5,                            	'pwv_max':20.0,
-						'A_min':-50,								'A_max':50,
-						'B_min':-0.6,								'B_max':0.6,
-						'N_min':0.10,                               'N_max':2.0, 	
-				        'lsf_min':5,                                'lsf_max':400, # see JWST/NIRSpec resolving power plot			
-					}
-
-elif 'sonora' in modelset.lower():
-	limits         = { 
-						'teff_min':max(priors['teff_min']-300,200), 'teff_max':min(priors['teff_max']+300,2400),
-						'logg_min':3.5,                             'logg_max':logg_max,
-						'vsini_min':0.0,                            'vsini_max':10.0,
-						'rv_min':-1000.0,                           'rv_max':1000.0,
-						'am_min':1.0,                               'am_max':3.0,
-						'pwv_min':0.5,                            	'pwv_max':20.0,
-						'A_min':-50,								'A_max':50,
-						'B_min':-50,                              	'B_max':50,
-						'N_min':0.10,                               'N_max':10.0,
-						'lsf_min':1,                                'lsf_max':200 				
-					}
-
-elif modelset.lower() == 'phoenixaces':
-	limits         = { 
-						'teff_min':max(priors['teff_min']-300,2300), 'teff_max':min(priors['teff_max']+300,10000),
-						'logg_min':3.5,                             'logg_max':logg_max,
-						'vsini_min':0.0,                            'vsini_max':100.0,
-						'rv_min':-1000.0,                           'rv_max':1000.0,
-						'am_min':1.0,                               'am_max':3.0,
-						'pwv_min':0.5,                            	'pwv_max':20.0,
-						'A_min':-50,								'A_max':50,
-						'B_min':-0.6,								'B_max':0.6,
-						'N_min':0.10,                               'N_max':10.0, 	
-						'lsf_min':1,                                'lsf_max':200 				
-					}
-
-
-
-# HIRES wavelength calibration is not that precise, release the constraint for the wavelength offset nuisance parameter
-if data.instrument == 'hires':
-	limits['B_min'] = -3.0 # Angstrom
-	limits['B_max'] = +3.0 # Angstrom
-
+# Update limits for final MCMC if needed
 if final_mcmc:
-	limits['rv_min'] = priors['rv_min'] - 10
+	limits = model_limits.update_limits_for_final_mcmc(limits, priors)
 	limits['rv_max'] = priors['rv_max'] + 10
 
 ## apply a custom mask

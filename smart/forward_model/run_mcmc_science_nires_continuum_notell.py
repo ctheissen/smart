@@ -13,6 +13,7 @@ from multiprocessing import set_start_method
 import smart
 import model_fit
 import mcmc_utils
+import model_limits
 import corner
 import os
 import sys
