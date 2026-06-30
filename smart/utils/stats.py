@@ -1,9 +1,10 @@
 import numpy as np
 import copy
 
-def chisquare(data, model, dof=0):
+def chisquare(data, model, dof=1):
     """
-    Compute the chi-square value given a data and a model.
+    Compute the (reduced) chi-square value 
+    given a data and a model.
     """
 
     ## handling noise that has nan values
@@ -16,4 +17,4 @@ def chisquare(data, model, dof=0):
     d.noise = d.noise[np.invert(mask)]
     m.flux  = m.flux[np.invert(mask)]
 
-    return np.sum(( d.flux - m.flux )**2 / d.noise**2)
+    return 1 / dof * np.sum(( d.flux - m.flux )**2 / d.noise**2)
